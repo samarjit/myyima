@@ -876,8 +876,8 @@ int SysMonD_w::sysMon_recv(int fd)
                  				   /* the old rtsps_fd should be equal to fd */
                  				  //   ASSERT(iter_tmp->rtsps_fd == fd);
                  				   //send result back to related RTSP server
-                 				     tmp_retVal = send(fd, &rspMsg, sizeof(SysmonDMsg_T), 0);
-                 				      ASSERT(tmp_retVal ==sizeof(SysmonDMsg_T));
+                 			//	     tmp_retVal = send(fd, &rspMsg, sizeof(SysmonDMsg_T), 0);
+                 			//	      ASSERT(tmp_retVal ==sizeof(SysmonDMsg_T));
                  break;
 
             case SYSMOND_RTSP_SETUP_REQ:	/* setup request  */
@@ -903,9 +903,9 @@ int SysMonD_w::sysMon_recv(int fd)
                  rspMsg.u.sysmonD_rtsp_setup_resp_info.session_id = iter_tmp->session_id;
                  rspMsg.u.sysmonD_rtsp_setup_resp_info.serverRTPPort = SERVER_RTP_PORT_NO;
                  rspMsg.u.sysmonD_rtsp_setup_resp_info.serverRTCPPort = SERVER_RTCP_PORT_NO;
-
+                 printf("SysMonD_w::sysMon_recv() command type:%d\n",rspMsg.cmdType);
                  //send result back to related RTSP server
-                 tmp_retVal = send(iter_tmp->rtsps_fd, &rspMsg, sizeof(SysmonDMsg_T), 0);
+                  tmp_retVal = send(iter_tmp->rtsps_fd, &rspMsg, sizeof(SysmonDMsg_T), 0);
                  ASSERT(tmp_retVal == sizeof(SysmonDMsg_T));
 
                  break;

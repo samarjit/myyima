@@ -37,6 +37,7 @@ so long as this copyright notice is reproduced with each such copy made."
 #include <ctype.h>
 #include "rtsps.h"
 #include <string.h>
+#include <stdio.h>
 
 struct connection {
     char SID[SID_LEN];
@@ -52,6 +53,8 @@ struct connection {
     // TODO:
     // You may freely store intermediate parsed data here.
     int Cseq;
+    int clientRtpPort;
+    int clientRtcpPort;
 } conntable[MAXNUMCLIENTS];
 
 int listener;
@@ -445,6 +448,7 @@ void ConvertRequest(char *message,SysmonDMsg_T *cnvmessage,int session)
     char *temp;
     int i;
     int track_id;
+    char portinfo[2048];
 
     if (!message || !cnvmessage) return;
 
@@ -452,8 +456,9 @@ void ConvertRequest(char *message,SysmonDMsg_T *cnvmessage,int session)
     // TODO:
     // You may need to store some important intermediate data that may be
     // used in ConvertResponse().
-    printf("\nTODO: store some additional information in conntable\n");
+    strcpy(portinfo,message); //samarjit
 
+    printf("\nTODO: store some additional information in conntable\n");
 
     command[0] = '\0';
     strcpy(command,strtok(message," "));
@@ -500,7 +505,23 @@ void ConvertRequest(char *message,SysmonDMsg_T *cnvmessage,int session)
 
 	// TODO:
 	// configure cnvmessage->u.sysmonD_rtsp_setup_req_info.clientRTPPort and clientRTCPPort correctly from input string.
-        printf("\nTODO: incomplete at ConvertRequest()\n");
+        char *temp_rtpport;
+		char *temp_rtcpport;
+		char output[100];
+		temp_rtpport = strcasestr(portinfo, "client_port=");
+		int cmdlen2 = strcspn(temp_rtpport, "\r\n");
+
+		strncpy(output, temp_rtpport + 12, cmdlen2 - 12);
+		output[cmdlen2 - 12] = '\0';
+
+		temp_rtpport = strtok(output, "-");
+		temp_rtcpport = strtok(NULL, "-");
+        			printf("Client ports rtp and rtcp :%s %s ",message,temp_rtpport);
+        cnvmessage->u.sysmonD_rtsp_setup_req_info.clientRTPPort = atoi(temp_rtpport);
+        conntable[session].clientRtpPort = atoi(temp_rtpport);
+        cnvmessage->u.sysmonD_rtsp_setup_req_info.clientRTCPPort= atoi(temp_rtcpport);
+        conntable[session].clientRtcpPort = atoi(temp_rtcpport);
+        printf("\nTODO: incomplete at ConvertRequest() SETUP\n");
 
     } else if (!strcmp(command,"PLAY")) {
         cnvmessage->cmdError = SYSMOND_OK;
@@ -539,7 +560,7 @@ void ConvertRequest(char *message,SysmonDMsg_T *cnvmessage,int session)
           cnvmessage->u.sysmonD_rtsp_teardown_req_info.crashFlg = 0;
     }
     else {
-	printf("(RTSPS/frontend/client): unknown command in client request!");
+	printf("(RTSPS/frontend/client): unknown command[%s] in client request!",command);
     }
 }
 
@@ -552,7 +573,7 @@ void ConvertResponse(SysmonDMsg_T *message,char *cnvmessage,int session,char *co
     if (!message || !cnvmessage) return;
 
     *cnvmessage = '\0';
-
+    printf("ConvertResponse command type:%d\n",message->cmdType);
     switch (message->cmdType) { 
 		case SYSMOND_RTSP_OPTIONS_RESP:
                 strcpy(command,"OPTIONS");
@@ -579,10 +600,10 @@ void ConvertResponse(SysmonDMsg_T *message,char *cnvmessage,int session,char *co
 
             if (message->cmdError == SYSMOND_OK) {
                 strcat(cnvmessage,"RTSP/1.0 200 OK\r\n");
-	    }
-            else {
-                strcat(cnvmessage,"RTSP/1.0 FAIL\r\n");
-	    }
+			}
+				else {
+					strcat(cnvmessage,"RTSP/1.0 FAIL\r\n");
+			}
             printf("hello something happening here");
 	    // TODO:
 	    // you need to append remaining characters to "cnvmessage".
@@ -623,6 +644,9 @@ void ConvertResponse(SysmonDMsg_T *message,char *cnvmessage,int session,char *co
             char *sline;
             sline = NULL;
             if((read  =  getline(&sline,&len,fp))!=-1){
+             	sline[strlen(sline)-1]=13;
+             	strcat(sline,"\n");
+            //	sline[strlen(sline)-1]=0;
             	strcat(sdpMsg,sline);
             }
             sprintf( tmpsdpMsg,"t=%f %f\r\n", message->u.sysmonD_rtsp_describe_resp_info.npt_range.startLocation,
@@ -631,12 +655,16 @@ void ConvertResponse(SysmonDMsg_T *message,char *cnvmessage,int session,char *co
 
             strcat(sdpMsg,"a=controls:*\r\n");
             if((read  =  getline(&sline,&len,fp))!=-1){
+             	sline[strlen(sline)-1]=13;
+             	strcat(sline,"\n");
                        	strcat(sdpMsg,sline);
                        }
             sprintf( tmpsdpMsg,"a=range:npt=0- %.5f\r\n",(float) message->u.sysmonD_rtsp_describe_resp_info.duration_in_seconds);
             strcat(sdpMsg,tmpsdpMsg);
              read  =  getline(&sline,&len,fp);//skip one eol
             while((read  =  getline(&sline,&len,fp))!=-1){
+             	sline[strlen(sline)-1]=13;
+             	strcat(sline,"\n");
                                    	strcat(sdpMsg,sline);
                                    }
             fclose(fp);
@@ -647,15 +675,16 @@ void ConvertResponse(SysmonDMsg_T *message,char *cnvmessage,int session,char *co
 			sprintf(tmpsdpMsg,"Content-length: %d\r\n\r\n",sdp_len);
 			 strcat(cnvmessage,tmpsdpMsg);
 			 strcat(cnvmessage,sdpMsg);
-
+			 strcat(cnvmessage,"\r\n");
 			printf("\nTODO: incomplete DESCRIBE RESPONSE at ConvertResponse() %s\n",sdpMsg);
 
             break;  
 
         case SYSMOND_RTSP_SETUP_RESP:
+        	printf("SYSMOND_RTSP_SETUP_RESP block in switch\n");
             strcpy(command,"SETUP");
-             
-            strcpy(cnvmessage,"RTSP/1.0 ");
+            memset(cnvmessage,'\0',2048);
+            strcat(cnvmessage,"RTSP/1.0 ");
             if (message->cmdError == SYSMOND_OK) {
                 strcat(cnvmessage," 200 OK\r\n");
 	    }
@@ -676,10 +705,10 @@ void ConvertResponse(SysmonDMsg_T *message,char *cnvmessage,int session,char *co
 		  sprintf(tmpsdpMsg,"Session: %s\r\nTransport: RTP/AVP;",conntable[session].SID);
 		  strcat(cnvmessage,tmpsdpMsg);
 		  sprintf(tmpsdpMsg,"unicast;source=%s;",inet_ntoa(conntable[session].addr.sin_addr));
+		  strcat(cnvmessage,tmpsdpMsg);//ntohs(conntable[session].addr.sin_port)
+		  sprintf(tmpsdpMsg,"client_port=%d-%d;", conntable[session].clientRtpPort, conntable[session].clientRtcpPort);
 		  strcat(cnvmessage,tmpsdpMsg);
-		  sprintf(tmpsdpMsg,"client_port=%d-%d;",ntohs(conntable[session].addr.sin_port));
-		  strcat(cnvmessage,tmpsdpMsg);
-		  sprintf(tmpsdpMsg,"server_port=%d-%d;",message->u.sysmonD_rtsp_setup_resp_info.serverRTCPPort,message->u.sysmonD_rtsp_setup_resp_info.serverRTPPort);
+		  sprintf(tmpsdpMsg,"server_port=%d-%d;",message->u.sysmonD_rtsp_setup_resp_info.serverRTPPort,message->u.sysmonD_rtsp_setup_resp_info.serverRTCPPort);
 		  strcat(cnvmessage,tmpsdpMsg);
 		  sprintf(tmpsdpMsg,"ssrc=%s\r\n\r\n","1234");
 		  strcat(cnvmessage,tmpsdpMsg);

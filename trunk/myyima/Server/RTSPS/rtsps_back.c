@@ -181,7 +181,7 @@ int RunBackend(void)
 						TerminateBackend();
 						return 0;
 					}
-
+					printf("rtsp_backend We got reqType=%d\n",message.cmdType);
 					Assert((SID = GetSID_Response(&message)) != NA,
 							"(RTSPS/backend/node): cannot find session ID in node response");
 					//if (message.cmdType == SYSMOND_RTSP_OPTIONS_RESP) {
