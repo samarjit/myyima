@@ -1251,7 +1251,9 @@ int SysMonD_rsp::run_sysMonD_rsp()
              rspMsg.cmdError = (SysmonDerror) tmp_flib_resp.cmdError; /* !!!! to do later */
              rspMsg.u.sysmonD_rtsp_describe_resp_info.npt_range.startLocation = tmp_flib_resp.u.flib_get_npt_range_resp_info.npt_range.startLocation;
              rspMsg.u.sysmonD_rtsp_describe_resp_info.npt_range.stopLocation = tmp_flib_resp.u.flib_get_npt_range_resp_info.npt_range.stopLocation;
-
+             //samarjit
+             rspMsg.u.sysmonD_rtsp_describe_resp_info.duration_in_seconds = iter_tmp->movInfo.duration_in_seconds;
+             //rspMsg.u.sysmonD_rtsp_describe_resp_info.movie_name = tmp_flib_resp.u.flib_get_npt_range_resp_info.mov_info
              //send result back to related RTSP server
              tmp_retVal = send(iter_tmp->rtsps_fd, &rspMsg, sizeof(SysmonDMsg_T), 0);
              ASSERT(tmp_retVal == sizeof(SysmonDMsg_T));

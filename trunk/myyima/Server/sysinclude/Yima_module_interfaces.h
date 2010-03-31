@@ -106,6 +106,7 @@ typedef struct SYSMOND_RTSP_DESCRIBE_REQ_INFO {
 typedef struct SYSMOND_RTSP_DESCRIBE_RESP_INFO {
   UInt64 session_id;
   NPT_RANGE_T npt_range;
+  int duration_in_seconds; //added by samarjit
 } SYSMOND_RTSP_DESCRIBE_RESP_INFO;
 
 typedef struct SYSMOND_RTSP_SETUP_REQ_INFO {

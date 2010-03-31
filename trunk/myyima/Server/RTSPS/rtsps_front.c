@@ -36,7 +36,7 @@ so long as this copyright notice is reproduced with each such copy made."
 #include <stdlib.h>
 #include <ctype.h>
 #include "rtsps.h"
-
+#include <string.h>
 
 struct connection {
     char SID[SID_LEN];
@@ -120,7 +120,7 @@ int RunFrontend(void)
         read_fds = master; 		// reset temp fd_set
         if (select(fdmax+1, &read_fds, NULL, NULL, NULL) == -1) {
             FatalError("(RTSPS/frontend/select)");
- 	}
+			}
 
 	// run through the existing connections looking for data to read
 	for (i = fdmin; i <= fdmax; i++) {
@@ -571,7 +571,7 @@ void ConvertResponse(SysmonDMsg_T *message,char *cnvmessage,int session,char *co
 
     	    // TODO:
     	    // you need to append remaining characters to "cnvmessage".
-    	    printf("\nTODO: incomplete OPTIONS RESPONSE at ConvertResponse()\n");
+    	    printf("\nTODO: incomplete OPTIONS RESPONSE at ConvertResponse()..done\n");
 
                 break;
         case SYSMOND_RTSP_DESCRIBE_RESP:
@@ -583,17 +583,79 @@ void ConvertResponse(SysmonDMsg_T *message,char *cnvmessage,int session,char *co
             else {
                 strcat(cnvmessage,"RTSP/1.0 FAIL\r\n");
 	    }
-
+            printf("hello something happening here");
 	    // TODO:
 	    // you need to append remaining characters to "cnvmessage".
-	    printf("\nTODO: incomplete DESCRIBE RESPONSE at ConvertResponse()\n");
+            char sdpMsg[1000];
+            sdpMsg[0] ='\0' ;
+            char tmpsdpMsg[1000];
+
+            tmpsdpMsg[0] = '\0';
+            strcat(cnvmessage,"Cseq: ");
+            sprintf(tmpsdpMsg,"%d\r\n",conntable[session].Cseq);
+            strcat(cnvmessage,tmpsdpMsg);
+
+            strcpy(sdpMsg,"v=0\r\n");
+            struct timeval t;
+               struct timezone tz;
+               int theErr ;
+               theErr = gettimeofday(&t, &tz);
+
+               sprintf(tmpsdpMsg,"o=YimaServer %llu %d IN IP4 %s\r\n",message->u.sysmonD_rtsp_describe_resp_info.session_id,t.tv_sec
+						,inet_ntoa(conntable[session].addr.sin_addr));
+            strcat(sdpMsg,tmpsdpMsg);
+            sprintf(tmpsdpMsg,"s=/%s\r\n",conntable[session].movie_name);
+            strcat(sdpMsg,tmpsdpMsg);
+            strcat(sdpMsg,"u=http:///\r\n");
+            strcat(sdpMsg,"e=admin@YimaServer\r\n");
+            strcat(sdpMsg,"c=IN IP4 0.0.0.0\r\n");
+            char sdpfile[200];
+            strncpy(sdpfile,conntable[session].movie_name,strlen(conntable[session].movie_name)-4);
+            sdpfile[strlen(conntable[session].movie_name)-4]='\0';
+            strcat(sdpfile,"_sdp.txt");
+            printf("\nSDP file _sdp.txt is: %s",sdpfile);
+
+            FILE *fp;
+            fp = fopen(sdpfile,"r+");
+            size_t len;
+            len=0;
+            ssize_t read;
+            char *sline;
+            sline = NULL;
+            if((read  =  getline(&sline,&len,fp))!=-1){
+            	strcat(sdpMsg,sline);
+            }
+            sprintf( tmpsdpMsg,"t=%f %f\r\n", message->u.sysmonD_rtsp_describe_resp_info.npt_range.startLocation,
+            		message->u.sysmonD_rtsp_describe_resp_info.npt_range.stopLocation);
+            strcat(sdpMsg,tmpsdpMsg);
+
+            strcat(sdpMsg,"a=controls:*\r\n");
+            if((read  =  getline(&sline,&len,fp))!=-1){
+                       	strcat(sdpMsg,sline);
+                       }
+            sprintf( tmpsdpMsg,"a=range:npt=0- %.5f\r\n",(float) message->u.sysmonD_rtsp_describe_resp_info.duration_in_seconds);
+            strcat(sdpMsg,tmpsdpMsg);
+             read  =  getline(&sline,&len,fp);//skip one eol
+            while((read  =  getline(&sline,&len,fp))!=-1){
+                                   	strcat(sdpMsg,sline);
+                                   }
+            fclose(fp);
+
+
+			int sdp_len;
+			sdp_len = strlen(sdpMsg);
+			sprintf(tmpsdpMsg,"Content-length: %d\r\n\r\n",sdp_len);
+			 strcat(cnvmessage,tmpsdpMsg);
+			 strcat(cnvmessage,sdpMsg);
+
+			printf("\nTODO: incomplete DESCRIBE RESPONSE at ConvertResponse() %s\n",sdpMsg);
 
             break;  
 
         case SYSMOND_RTSP_SETUP_RESP:
             strcpy(command,"SETUP");
              
-            strcat(cnvmessage,"RTSP/1.0 ");
+            strcpy(cnvmessage,"RTSP/1.0 ");
             if (message->cmdError == SYSMOND_OK) {
                 strcat(cnvmessage," 200 OK\r\n");
 	    }
@@ -603,6 +665,26 @@ void ConvertResponse(SysmonDMsg_T *message,char *cnvmessage,int session,char *co
 	    
 	    // TODO:
 	    // you need to append remaining characters to "cnvmessage".
+
+		  // char tmpsdpMsg[1000];
+
+		  tmpsdpMsg[0] = '\0';
+		  strcat(cnvmessage,"Cseq: ");
+		  sprintf(tmpsdpMsg,"%d\r\n",conntable[session].Cseq);
+		  strcat(cnvmessage,tmpsdpMsg);
+
+		  sprintf(tmpsdpMsg,"Session: %s\r\nTransport: RTP/AVP;",conntable[session].SID);
+		  strcat(cnvmessage,tmpsdpMsg);
+		  sprintf(tmpsdpMsg,"unicast;source=%s;",inet_ntoa(conntable[session].addr.sin_addr));
+		  strcat(cnvmessage,tmpsdpMsg);
+		  sprintf(tmpsdpMsg,"client_port=%d-%d;",ntohs(conntable[session].addr.sin_port));
+		  strcat(cnvmessage,tmpsdpMsg);
+		  sprintf(tmpsdpMsg,"server_port=%d-%d;",message->u.sysmonD_rtsp_setup_resp_info.serverRTCPPort,message->u.sysmonD_rtsp_setup_resp_info.serverRTPPort);
+		  strcat(cnvmessage,tmpsdpMsg);
+		  sprintf(tmpsdpMsg,"ssrc=%s\r\n\r\n","1234");
+		  strcat(cnvmessage,tmpsdpMsg);
+
+
 	    printf("\nTODO: incomplete SETUP RESPONSE at ConvertResponse()\n");
              
             break;  
