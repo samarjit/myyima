@@ -142,7 +142,7 @@ static int InitMovies()
 
 					// TODO:
 					// fill out every data field in MOVIE data structure
-					printf("\nTODO: incomplete during the movie intializataion.\n");
+					printf("\nTODO: incomplete during the movie intializataion. partially done\n");
 					Movie_Temp->size = size;
 					Movie_Temp->numpkts = NUMPKTS;
 					Movie_Temp->pktsize = MAX_PKTSIZE;
@@ -231,6 +231,10 @@ extern "C" int getStartBlockName(const char* movieName,
 
 	// TODO:
 	// map the given start_time to its corresponding block number correctly.
+	char temp[BLOCKNAMESIZE];
+
+	strcpy(temp,m->name);
+	sprintf(blockName,"%s_1",temp);
 	printf("\nTODO: incomplete at getStartBlockName()\n");
 
 	return 0; 

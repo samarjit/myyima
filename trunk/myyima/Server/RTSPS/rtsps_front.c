@@ -55,6 +55,8 @@ struct connection {
     int Cseq;
     int clientRtpPort;
     int clientRtcpPort;
+    int movieDuration;
+    int ssrc;
 } conntable[MAXNUMCLIENTS];
 
 int listener;
@@ -527,14 +529,31 @@ void ConvertRequest(char *message,SysmonDMsg_T *cnvmessage,int session)
         cnvmessage->cmdError = SYSMOND_OK;
 
 	/* retrieve NPT information from input parameters. */
-
+       char * temp_npt;
+       char output[100];
+       float npt ;
+       memset(output,0,100);
+       temp_npt = strcasestr(portinfo, "npt=");
+		int cmdlen2 = strcspn(temp_npt, "-");
+		strncpy(output, temp_npt + 4, cmdlen2 - 4);
+		output[cmdlen2 - 4] = '\0';
+        cnvmessage->cmdType = SYSMOND_RTSP_RESUME_REQ;
+        npt  = atof(output);
 	// TODO:
 	// read npt values from input string
 	// if there is no NPT value,
 	// 	create "SYSMOND_RTSP_RESUME_REQ" cmd and fill out session ID field.
  	// if existing,
 	//	create "SYSMOND_RTSP_PLAY_REQ" and fill out session ID, NPT fields.	
-	printf("\nTODO: incomplete at ConvertRequest()\n");
+        if(strlen(output) >0){
+        	 cnvmessage->cmdType = SYSMOND_RTSP_PLAY_REQ;
+        	 cnvmessage->u.sysmonD_rtsp_play_req_info.npt_range.startLocation = npt;
+        	 cnvmessage->u.sysmonD_rtsp_play_req_info.npt_range.stopLocation = conntable[session].movieDuration;
+        }else{
+        	cnvmessage->cmdType = SYSMOND_RTSP_RESUME_REQ;
+        }
+        cnvmessage->u.sysmonD_rtsp_setup_req_info.session_id = ConvertSID(conntable[session].SID);
+        printf("\nTODO: incomplete at ConvertRequest() PLAY\n");
 
     } else if (!strcmp(command,"PAUSE")) {
 
@@ -569,7 +588,7 @@ void ConvertRequest(char *message,SysmonDMsg_T *cnvmessage,int session)
 void ConvertResponse(SysmonDMsg_T *message,char *cnvmessage,int session,char *command)
 {
     char buf[MAXMESSAGESIZE];
-
+    char temp_msg[MAXMESSAGESIZE];
     if (!message || !cnvmessage) return;
 
     *cnvmessage = '\0';
@@ -660,6 +679,7 @@ void ConvertResponse(SysmonDMsg_T *message,char *cnvmessage,int session,char *co
                        	strcat(sdpMsg,sline);
                        }
             sprintf( tmpsdpMsg,"a=range:npt=0- %.5f\r\n",(float) message->u.sysmonD_rtsp_describe_resp_info.duration_in_seconds);
+            conntable[session].movieDuration =  (float) message->u.sysmonD_rtsp_describe_resp_info.duration_in_seconds;
             strcat(sdpMsg,tmpsdpMsg);
              read  =  getline(&sline,&len,fp);//skip one eol
             while((read  =  getline(&sline,&len,fp))!=-1){
@@ -695,24 +715,26 @@ void ConvertResponse(SysmonDMsg_T *message,char *cnvmessage,int session,char *co
 	    // TODO:
 	    // you need to append remaining characters to "cnvmessage".
 
-		  // char tmpsdpMsg[1000];
+		  // char temp_msg[1000];
 
-		  tmpsdpMsg[0] = '\0';
+            temp_msg[0] = '\0';
 		  strcat(cnvmessage,"Cseq: ");
-		  sprintf(tmpsdpMsg,"%d\r\n",conntable[session].Cseq);
-		  strcat(cnvmessage,tmpsdpMsg);
+		  sprintf(temp_msg,"%d\r\n",conntable[session].Cseq);
+		  strcat(cnvmessage,temp_msg);
 
-		  sprintf(tmpsdpMsg,"Session: %s\r\nTransport: RTP/AVP;",conntable[session].SID);
-		  strcat(cnvmessage,tmpsdpMsg);
-		  sprintf(tmpsdpMsg,"unicast;source=%s;",inet_ntoa(conntable[session].addr.sin_addr));
-		  strcat(cnvmessage,tmpsdpMsg);//ntohs(conntable[session].addr.sin_port)
-		  sprintf(tmpsdpMsg,"client_port=%d-%d;", conntable[session].clientRtpPort, conntable[session].clientRtcpPort);
-		  strcat(cnvmessage,tmpsdpMsg);
-		  sprintf(tmpsdpMsg,"server_port=%d-%d;",message->u.sysmonD_rtsp_setup_resp_info.serverRTPPort,message->u.sysmonD_rtsp_setup_resp_info.serverRTCPPort);
-		  strcat(cnvmessage,tmpsdpMsg);
-		  sprintf(tmpsdpMsg,"ssrc=%s\r\n\r\n","1234");
-		  strcat(cnvmessage,tmpsdpMsg);
-
+		  sprintf(temp_msg,"Session: %s\r\nTransport: RTP/AVP;",conntable[session].SID);
+		  strcat(cnvmessage,temp_msg);
+		  sprintf(temp_msg,"unicast;source=%s;",inet_ntoa(conntable[session].addr.sin_addr));
+		  strcat(cnvmessage,temp_msg);//ntohs(conntable[session].addr.sin_port)
+		  sprintf(temp_msg,"client_port=%d-%d;", conntable[session].clientRtpPort, conntable[session].clientRtcpPort);
+		  strcat(cnvmessage,temp_msg);
+		  sprintf(temp_msg,"server_port=%d-%d;",message->u.sysmonD_rtsp_setup_resp_info.serverRTPPort,message->u.sysmonD_rtsp_setup_resp_info.serverRTCPPort);
+		  strcat(cnvmessage,temp_msg);
+		  int ssrc;
+		  ssrc = rand();
+		  sprintf(temp_msg,"ssrc=%d\r\n\r\n",ssrc);
+		  strcat(cnvmessage,temp_msg);
+		  conntable[session].ssrc = ssrc;
 
 	    printf("\nTODO: incomplete SETUP RESPONSE at ConvertResponse()\n");
              
@@ -730,7 +752,18 @@ void ConvertResponse(SysmonDMsg_T *message,char *cnvmessage,int session,char *co
 
 	    // TODO:
 	    // you need to append remaining characters to "cnvmessage".
-	    printf("\nTODO: incomplete PLAY RESPONSE at ConvertResponse()\n");
+              temp_msg[0] = '\0';
+			  strcat(cnvmessage,"Cseq: ");
+			  sprintf(temp_msg,"%d\r\n",conntable[session].Cseq);
+			  strcat(cnvmessage,temp_msg);
+			  sprintf(temp_msg,"Session: %s\r\n",conntable[session].SID);
+			  strcat(cnvmessage,temp_msg);
+			  sprintf( temp_msg,"Range: npt=%.5f-%.5f\r\n",(float) message->u.sysmonD_rtsp_play_resp_info.npt_range.startLocation,(float) message->u.sysmonD_rtsp_play_resp_info.npt_range.stopLocation);
+			  strcat(cnvmessage,temp_msg);
+			  sprintf(temp_msg,"RTP-Info: %s/trackID=65537;seq=%d;rtptime=%d\r\n",conntable[session].movie_url,message->u.sysmonD_rtsp_play_resp_info.nextrtp_seqqno,
+					  message->u.sysmonD_rtsp_play_resp_info.nextrtp_timestamp);
+			  strcat(cnvmessage,temp_msg);
+            printf("\nTODO: incomplete PLAY RESPONSE at ConvertResponse()\n");
              
             break;  
 
@@ -781,6 +814,12 @@ void ConvertResponse(SysmonDMsg_T *message,char *cnvmessage,int session,char *co
 
 	    // TODO:
 	    // you need to append remaining characters to "cnvmessage".
+            temp_msg[0] = '\0';
+           			  strcat(cnvmessage,"Cseq: ");
+           			  sprintf(temp_msg,"%d\r\n",conntable[session].Cseq);
+           			  strcat(cnvmessage,temp_msg);
+           			sprintf(temp_msg,"Session: %s\r\nConnection: Close",conntable[session].SID);
+           						  strcat(cnvmessage,temp_msg);
 	    printf("\nTODO: incomplete RESUME RESPONSE at ConvertResponse()\n");
 
             break; 	 

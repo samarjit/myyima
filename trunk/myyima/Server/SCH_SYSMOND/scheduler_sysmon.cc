@@ -923,7 +923,7 @@ int SysMonD_w::sysMon_recv(int fd)
                      printf("\n~~~show SYSMOND_RTSP_PLAY_REQ npt_range  ~~\n");
                      printf("nptRange[%f, %f]\n", tmp_nptRange.startLocation, tmp_nptRange.stopLocation);
                      printf("~~~~~~~~~~~~~~~~~~~~~\n");                
-		 #endif
+				 #endif
 
                  /* find correspinding session */
                  iter_tmp = findSessionNode(tmpSID, sessionList_p); /* !!! */
@@ -1280,7 +1280,9 @@ int SysMonD_rsp::run_sysMonD_rsp()
              rspMsg.cmdType = SYSMOND_RTSP_PLAY_RESP;
              rspMsg.cmdError = (SysmonDerror) tmp_flib_resp.cmdError; /* !!! to do later */
              rspMsg.u.sysmonD_rtsp_play_resp_info.sessionID = iter_tmp->session_id;
-             
+             //samarjit
+             rspMsg.u.sysmonD_rtsp_play_resp_info.nextrtp_seqqno = tmp_flib_resp.u.flib_play_resp_info.nextRTPPktInfo.nextRTPPktSeqNo;
+             rspMsg.u.sysmonD_rtsp_play_resp_info.nextrtp_timestamp =tmp_flib_resp.u.flib_play_resp_info.nextRTPPktInfo.nextRTPPktTimestamp;
              //send result back to related RTSP server
              tmp_retVal = send(iter_tmp->rtsps_fd, &rspMsg, sizeof(SysmonDMsg_T), 0);
              ASSERT(tmp_retVal == sizeof(SysmonDMsg_T));

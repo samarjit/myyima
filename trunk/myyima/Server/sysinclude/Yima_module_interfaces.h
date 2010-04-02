@@ -129,6 +129,9 @@ typedef struct SYSMOND_RTSP_PLAY_REQ_INFO {
 
 typedef struct SYSMOND_RTSP_PLAY_RESP_INFO {
   UInt64 sessionID;
+  NPT_RANGE_T npt_range;//samarjit
+  UInt32 nextrtp_seqqno;
+  UInt32 nextrtp_timestamp;
 } SYSMOND_RTSP_PLAY_RESP_INFO;
 
 typedef struct SYSMOND_RTSP_PAUSE_REQ_INFO {

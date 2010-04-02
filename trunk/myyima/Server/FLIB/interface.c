@@ -585,6 +585,10 @@ FLIBerror Flib_get_npt_range(const char *movieName, struct NPT_RANGE_T *nptRange
 	}
 	movInfo->duration_in_seconds = m->time; 
 	movInfo->movie_size_in_bytes = m->size;
+	//samarjit
+	movInfo->timestamp_step_perPkt = 1;
+	//samaarjit
+
 	nptRange->stopLocation = (double)m->time;  
 
 	if(nptRange->stopLocation != 0) {
