@@ -53,7 +53,7 @@ so long as this copyright notice is reproduced with each such copy made."
 #include "OS.h"
 #include "qpthr/qp.h"
 #include "scheduler_sysmon.h"
-
+#include "../FLIB/interface.h"
 
 // you may disable some debug meesage.
 #define SCHEDULER_SYSMON_DEBUG 1
@@ -423,6 +423,9 @@ int Scheduler::play_session(list<Session_T>::iterator iterator_in)
            #if SHOW_CLIENT_ADDR
 	   printf("\n~~~show client Addr~~\n");
            printf("clientIP=%lu, clientRTPport=%d\n",iterator_in->clientIPAddr, iterator_in->clientRTPPort);
+           struct rtp_header *nextRtpPacketPtr = NULL;
+           nextRtpPacketPtr = (struct rtp_header *)iterator_in->nextRTPPkt_p;
+           printf("My <SendOutThisRTPpacket>V=%d seqno:%d timestamp:%d ",nextRtpPacketPtr->V,nextRtpPacketPtr->SeqNum,nextRtpPacketPtr->TimeStamp);
            printf("\n~~~~~~~~~~~~~~~~~~~~~\n");
            #endif           
 
@@ -509,7 +512,8 @@ int Scheduler::play_session(list<Session_T>::iterator iterator_in)
 	   // you need to carefully calculudate the next delivery time 
 	   // from timestamp.
            // What is the time resolution of the timestamp defined in RTP ?
-           printf("\nTODO: compute iterator_in->nextRTPPktSendOutTime\n");
+           iterator_in->nextRTPPktSentOutTime = iterator_in->previousRTPPktSentOutTime+8460;// + iterator_in->nextRTPPktTimeStamp;
+           printf("\nTODO: compute iterator_in->nextRTPPktSendOutTime %llu\n",iterator_in->nextRTPPktSentOutTime);
 
 
 	
@@ -935,7 +939,7 @@ int SysMonD_w::sysMon_recv(int fd)
 		 // note that OS::Microseconds() returns current time expressed as microsecond unit.
 		 printf("\nTODO: assign iter_tmp->startPlayTime. NOT CRUCIAL\n");
 
-
+				 iter_tmp->startPlayTime = OS::Microseconds();
                  iter_tmp->maxAdvancedTime = MaxAdvancedTime;
                  iter_tmp->MovieEndHandlingFlg = FALSE;
 
@@ -1455,6 +1459,7 @@ void MP4Flib::FLib_main(MP4Flib_MsgQueue_T* recvMsgQ_p_in,  SysMonD_MsgQueue_T* 
 						&(next_pkt->nextRTPPktTimestamp),
 						&(next_pkt->lastPktFlg),
 						&(next_pkt->blockPtr) );
+
              pthread_mutex_unlock(&FLIB_access_mutex);
                          
              rspMsg.cmdError = FLIB_OK;              
