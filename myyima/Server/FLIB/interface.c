@@ -401,7 +401,7 @@ int Flib_getNextPacket(	UInt64 sId,
 	*nextRtpPacketSeqNum = (UInt32)htons(nextRtpPacketPtr->SeqNum);
 	*nextRtpPacketTimestamp= htonl(nextRtpPacketPtr->TimeStamp);
 	*nextPacketSize =current->pkt_lens_in_a_block[current->currentPacketIndex];
-
+	printf("My <Flib_getNextPacket>V=%d seqno:%d timestamp:%d offset %d",nextRtpPacketPtr->V,nextRtpPacketPtr->SeqNum,nextRtpPacketPtr->TimeStamp,offset);
 
 	// prepare fields that will be used in the next round.
 	if( (current->currentPacketIndex%NUMPKTS) < (current->numOfPackets-1)) {

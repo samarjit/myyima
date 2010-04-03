@@ -234,8 +234,8 @@ extern "C" int getStartBlockName(const char* movieName,
 	char temp[BLOCKNAMESIZE];
 
 	strcpy(temp,m->name);
-	sprintf(blockName,"%s_1",temp);
-	printf("\nTODO: incomplete at getStartBlockName()\n");
+	sprintf(blockName,"%s%s_1",directory,temp);
+	printf("\nTODO: incomplete at getStartBlockName() now gets irrespective of timestamp\n");
 
 	return 0; 
 }
@@ -260,7 +260,14 @@ extern "C" int getNextBlockName(const char* movieName,
 	// if there exists next block file to read,
 	// set the block name at "nextblockName" and returns 0
 	// otherwise, set "nextblockName[0] = 0 and returns -1
-	printf("\nTODO: incomplete at getNextBlockName()\n");
+	sprintf(nextblockName,"%s_%d",movieName,CurrentBlockNumber);
+	FILE *fp = fopen(nextblockName,"r");
+	if(fp != NULL){
+		fclose(fp);
+	}else{nextblockName[0] = 0;
+	return -1;
+	}
+	printf("\nTODO: incomplete at getNextBlockName() error condition implemented\n");
 
 
 	return 0;
@@ -288,7 +295,21 @@ extern "C" int getNumPackets_PackSize(	const char* movieName, const char* blockN
 	// If the given Block file is the last block,
 	// configure "numpkt" and "pktsize" carefully.
 	// NOTE that pktsize may be given as a NULL pointer.
-	printf("\nTODO: incomplete at getNumPackets_PackSize()\n");
+	int i;
+			for(i=0;i<500;i++){
+				pkt_lens_in_a_block[i] = 1450;
+			}
+	if(BlockNum  ==  m->numpkts){
+		//*pkt_lens_in_a_block = m->size - m->pktsize * m->numpkts;
+
+		printf("getNumPackets_PackSize:End of a block reached, what to do?");
+	}else{
+		//*pkt_lens_in_a_block = m->pktsize;
+	}
+	*numpkts = 500; //just for the time being
+
+
+	printf("\nTODO: incomplete at getNumPackets_PackSize()...\n");
 
 	
 	return 0;  
