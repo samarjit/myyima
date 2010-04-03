@@ -548,7 +548,40 @@ int Scheduler::SendOutThisRTPpacket(int fSocket, UInt32 inRemoteAddr, UInt16 inR
 	int theErr = -1;
 
         do 
-        {
+        { struct rtp_header *	header;
+         header = (rtp_header *)inBuffer;
+        	unsigned int testblock[3];
+        	memset(testblock,0,sizeof(unsigned int)*3);
+        					//memcpy(testblock,header,sizeof(unsigned int)*3);
+        	 	testblock[2] = 0;
+        					 unsigned int tmp;
+        					tmp = header->V;
+        					tmp = tmp <<30;
+        					tmp &= 0xc0000000;
+        					testblock[0] = testblock[0] | tmp ;
+        					tmp = header->V;tmp = tmp <<30;//V
+        					testblock[0] = testblock[0] | tmp ;
+        					tmp = header->P;tmp = tmp <<29;//P
+        					testblock[0] = testblock[0] | tmp ;
+        					tmp = header->X;tmp = tmp <<28;//X
+        					testblock[0] = testblock[0] | tmp ;
+        					tmp = header->CC;tmp = tmp <<24;//CC
+        					testblock[0] = testblock[0] | tmp ;
+        					tmp = header->M;tmp = tmp <<23;//M
+        					testblock[0] = testblock[0] | tmp ;
+        					tmp = header->Pt;tmp = tmp <<16;//Pt
+        					testblock[0] = testblock[0] | tmp ;
+        					tmp = header->SeqNum;tmp = tmp <<0;//Pt
+        					testblock[0] = testblock[0] | tmp ;
+        					tmp = header->TimeStamp;tmp = tmp <<0;//Pt
+        					testblock[1] = testblock[1] | tmp ;
+        					tmp = header->SSRC;tmp = tmp <<0;//Pt
+        					testblock[2] = testblock[2] | tmp ;
+
+        					testblock[0] = ntohl(testblock[0]);
+        					testblock[1] = ntohl(testblock[1]);
+        					testblock[2] = ntohl(testblock[2]);
+        					memcpy(header,testblock,12	);
            theErr = ::sendto(fSocket, inBuffer, inLength, 0, (sockaddr*)&theRemoteAddr, sizeof(theRemoteAddr));
         }
         while ((theErr == -1) && (errno == EWOULDBLOCK));                  
