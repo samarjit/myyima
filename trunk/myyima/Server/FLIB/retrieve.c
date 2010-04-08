@@ -147,9 +147,32 @@ static int InitMovies()
 					Movie_Temp->numpkts = NUMPKTS;
 					Movie_Temp->pktsize = MAX_PKTSIZE;
 					Movie_Temp->time = duration;
+					FILE *fpblockmeta;
+					char packetsizedata[3000]; //=500('pkts')*5(sizze of num)+500(',')
+					int numpacketperblk;
+					int block_no;
+					int ipacketcounter;
+					char movie_block_meta_filename[BLOCKNAMESIZE];
+					char temp_packet_offset[6];
+					sprintf(movie_block_meta_filename,"%s_blk_meta.txt",name);
+					fpblockmeta = fopen(movie_block_meta_filename,"r");
+					strcpy(Movie_Temp->blkmetafilename, movie_block_meta_filename);
+					printf("Block metadata filename:%s",Movie_Temp->blkmetafilename);
+					while((fscanf(fpblockmeta,"%d %d %s\n",&block_no,&numpacketperblk,packetsizedata))==3){
+						Movie_Temp->block_dtl_ar[block_no].nPackets = numpacketperblk;
+						Movie_Temp->num_blocks = Movie_Temp->num_blocks + 1;
+						//printf("\nInitMovie:block deatils blkNo:%d Pkts per blk:%d",block_no,numpacketperblk);
+						strcpy(temp_packet_offset, strtok(packetsizedata,","));
+						ipacketcounter = 0;
+						Movie_Temp->block_dtl_ar[block_no].packet_lens_array[ipacketcounter]= atoi(temp_packet_offset);
+						while((++ipacketcounter) < numpacketperblk){
+							strcpy(temp_packet_offset,  strtok(NULL,","));
+							Movie_Temp->block_dtl_ar[block_no].packet_lens_array[ipacketcounter]= atoi(temp_packet_offset);
 
+						}
 
-
+					}
+					fclose(fpblockmeta);
 					Movie_Temp->next = NULL;
 
 					// attach newly generated MOVIE to the end of the MOVIE list.
@@ -288,7 +311,7 @@ extern "C" int getNumPackets_PackSize(	const char* movieName, const char* blockN
 	}
   
 	BlockNum = getBlockNum(blockName);
-
+	//printf("getNumPackets_PackSize: getting blocks of no. %d",BlockNum);
 	// TODO:
 	// If the given Block file name is incorrect,
 	// clean up the output values (numpkt and pktsize) in particular.
@@ -296,8 +319,10 @@ extern "C" int getNumPackets_PackSize(	const char* movieName, const char* blockN
 	// configure "numpkt" and "pktsize" carefully.
 	// NOTE that pktsize may be given as a NULL pointer.
 	int i;
-			for(i=0;i<500;i++){
-				pkt_lens_in_a_block[i] = 1450;
+
+			for(i=0;i< m->block_dtl_ar[BlockNum].nPackets;i++){
+				pkt_lens_in_a_block[i] =  m->block_dtl_ar[BlockNum].packet_lens_array[i];
+			//	printf("pkt_lens_in_a_block[%d]=%d",i,pkt_lens_in_a_block[i]);
 			}
 	if(BlockNum  ==  m->numpkts){
 		//*pkt_lens_in_a_block = m->size - m->pktsize * m->numpkts;
@@ -306,8 +331,8 @@ extern "C" int getNumPackets_PackSize(	const char* movieName, const char* blockN
 	}else{
 		//*pkt_lens_in_a_block = m->pktsize;
 	}
-	*numpkts = 500; //just for the time being
-
+	*numpkts =  m->block_dtl_ar[BlockNum].nPackets; //just for the time being
+	printf("<getNumPackets_PackSize>BlockName%s blk_num:%d packet per blk:%d",blockName,BlockNum, m->block_dtl_ar[BlockNum].nPackets);
 
 	printf("\nTODO: incomplete at getNumPackets_PackSize()...\n");
 

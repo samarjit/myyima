@@ -155,6 +155,7 @@ typedef struct Session_T {
 
    UInt32 previousRTPPktSeqNo;  
    SInt64 previousRTPPktSentOutTime; /* in milli-seconds since Jan 1, 1970 */
+   UInt32 SSRC; //samarjit
 } Session_T;
 
 pthread_mutex_t FLIB_access_mutex; /* added for ???!!! */
