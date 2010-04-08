@@ -43,7 +43,8 @@ extern "C" {
 
 #define NUMPKTS 500      // number of RTP packets per block file
 #define MAX_PKTSIZE 1450 // max RTP length
-
+//samarjit
+#define MAXBLOCKSIZE 500
 #define DIRECTORY "/home/bseo/YimaPE_v1.1/Streams/BLOCKS/"
 #define ConfigFile "../Server/config"
 
@@ -67,19 +68,30 @@ struct packet{
 	struct rtp_header header;
 	char*	data;
 };
+//samarjit
+//Assuming maximum packets in a block can be NUMPKTS
+typedef struct block_dtl{
+int nPackets;
+int packet_lens_array[NUMPKTS];
+}BLOCK_DTL;
 
 typedef struct movie {
 	char	name[BLOCKNAMESIZE];
-	unsigned long long size;
+	unsigned long long size; //size of movie
 	int	numpkts;
-	int	pktsize;
-	int	time;
+	int	pktsize; //samarjit ???
+	int	time;  //total movie time
 
 	// TODO:
 	// add more fields for internal use
-
+	char sdpfilename[BLOCKNAMESIZE];
+	char blkmetafilename[BLOCKNAMESIZE];
 	struct	movie *next;
+	int num_blocks;
+	struct block_dtl block_dtl_ar[MAXBLOCKSIZE];
 } MOVIE;
+
+
 
 #ifdef __cplusplus
 }

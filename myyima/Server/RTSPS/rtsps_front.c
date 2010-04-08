@@ -730,11 +730,10 @@ void ConvertResponse(SysmonDMsg_T *message,char *cnvmessage,int session,char *co
 		  strcat(cnvmessage,temp_msg);
 		  sprintf(temp_msg,"server_port=%d-%d;",message->u.sysmonD_rtsp_setup_resp_info.serverRTPPort,message->u.sysmonD_rtsp_setup_resp_info.serverRTCPPort);
 		  strcat(cnvmessage,temp_msg);
-		  int ssrc;
-		  ssrc = rand();
-		  sprintf(temp_msg,"ssrc=%d\r\n\r\n",ssrc);
+
+		  sprintf(temp_msg,"ssrc=%d\r\n\r\n",message->u.sysmonD_rtsp_setup_resp_info.SSRC);
 		  strcat(cnvmessage,temp_msg);
-		  conntable[session].ssrc = ssrc;
+		  conntable[session].ssrc = message->u.sysmonD_rtsp_setup_resp_info.SSRC;
 
 	    printf("\nTODO: incomplete SETUP RESPONSE at ConvertResponse()\n");
              

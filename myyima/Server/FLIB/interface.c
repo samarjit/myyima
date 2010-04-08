@@ -398,8 +398,9 @@ int Flib_getNextPacket(	UInt64 sId,
 	// fill out RTP memory location, sequence number, timestamp and its packet length to send.
 	nextRtpPacketPtr = (struct rtp_header *)(current->blockPtr + offset);
 	*nextRtpPacketPointer = ((char*)nextRtpPacketPtr);
-	*nextRtpPacketSeqNum = (UInt32)htons(nextRtpPacketPtr->SeqNum);
-	*nextRtpPacketTimestamp= htonl(nextRtpPacketPtr->TimeStamp);
+	//commented htons htonl samarjit
+	*nextRtpPacketSeqNum = nextRtpPacketPtr->SeqNum;//(UInt32)htons(nextRtpPacketPtr->SeqNum);
+	*nextRtpPacketTimestamp= nextRtpPacketPtr->TimeStamp;//htonl(nextRtpPacketPtr->TimeStamp);
 	*nextPacketSize =current->pkt_lens_in_a_block[current->currentPacketIndex];
 	printf("My <Flib_getNextPacket>V=%d seqno:%d timestamp:%d offset %d",nextRtpPacketPtr->V,nextRtpPacketPtr->SeqNum,nextRtpPacketPtr->TimeStamp,offset);
 
@@ -586,7 +587,7 @@ FLIBerror Flib_get_npt_range(const char *movieName, struct NPT_RANGE_T *nptRange
 	movInfo->duration_in_seconds = m->time; 
 	movInfo->movie_size_in_bytes = m->size;
 	//samarjit
-	movInfo->timestamp_step_perPkt = 1;
+	movInfo->timestamp_step_perPkt = 3750;
 	//samaarjit
 
 	nptRange->stopLocation = (double)m->time;  

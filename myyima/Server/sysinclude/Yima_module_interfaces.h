@@ -119,6 +119,7 @@ typedef struct SYSMOND_RTSP_SETUP_RESP_INFO {
   UInt64 session_id;
   UInt16 serverRTPPort;
   UInt16 serverRTCPPort;
+  UInt32 SSRC;
 } SYSMOND_RTSP_SETUP_RESP_INFO;
 
 
