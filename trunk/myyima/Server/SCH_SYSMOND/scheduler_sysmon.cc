@@ -56,12 +56,12 @@ so long as this copyright notice is reproduced with each such copy made."
 #include "../FLIB/interface.h"
 
 // you may disable some debug meesage.
-#define SCHEDULER_SYSMON_DEBUG 1
+#define SCHEDULER_SYSMON_DEBUG 0
 #define SHOW_FLIB_NPT_RANGE_GET_DEBUG 1
 #define SHOW_NEXT_PACKET_INFORMATION 1
 #define SHOW_CLIENT_ADDR 1
-#define SHOW_MIN_INTERVAL 1
-#define DEBUG_CALCULATE_MIN_INTERVAL 1
+#define SHOW_MIN_INTERVAL 0
+#define DEBUG_CALCULATE_MIN_INTERVAL 0
 #define DEBUG_SYSMOND_RTSP_PLAY_REQ 1
 #define DEEP_DEBUG 1
 
@@ -145,7 +145,7 @@ class Scheduler: public QpThread
         SInt64 calculateMinInterval();
 
         /* member functions related with RTP Server <begin> */
-        int SendOutThisRTPpacket(int fSocket, UInt32 inRemoteAddr, UInt16 inRemotePort, char* inBuffer, UInt32 inLength);
+        int SendOutThisRTPpacket(int fSocket, UInt32 inRemoteAddr, UInt16 inRemotePort, char* inBuffer, UInt32 inLength,UInt32 SSRC,UInt64 startPlayTime);
         /* member functions related with RTP Server <end> */
 
     public:
@@ -208,42 +208,42 @@ SInt64 Scheduler::calculateMinInterval()
 
    while (iter_tmp != sessionList_p->end())
    {       
-       ASSERT((*numOfPlayingSession_p) >= 0);
-       if ( *numOfPlayingSession_p <= 0 )
-          return(0);       
+	   ASSERT((*numOfPlayingSession_p) >= 0);
+	   if ( *numOfPlayingSession_p <= 0 )
+		   return(0);
 
-       if (iter_tmp->currentSessionState == PLAYING)
-       {   
-
-           /* init tmpMinSendOutTime */
-           if (initSetFlg == 0)
+	   if (iter_tmp->currentSessionState == PLAYING)
 	   {
-              /* !!! */
-	      tmpMinSendOutTime = iter_tmp->nextRTPPktSentOutTime - iter_tmp->maxAdvancedTime;
-              iter_tmp_min = iter_tmp; 
-              initSetFlg = 1;
-           }
-           else
-	   {
-	      tmpSendOutTime = iter_tmp->nextRTPPktSentOutTime - iter_tmp->maxAdvancedTime;
-              if (tmpSendOutTime < tmpMinSendOutTime)
-	      {
-                  tmpMinSendOutTime = tmpSendOutTime;
-                  iter_tmp_min = iter_tmp; 
-              }
-           }
 
-           #if DEBUG_CALCULATE_MIN_INTERVAL
-               i++;
-               printf(" <session Counter [%d]>\n", i);
-               printf(" nextRTPPktSendOutTime = %lld \n", iter_tmp->nextRTPPktSentOutTime );
-               printf(" tmpMinSendOutTime  = %lld\n", tmpMinSendOutTime);
-           #endif
-       }
+		   /* init tmpMinSendOutTime */
+		   if (initSetFlg == 0)
+		   {
+			   /* !!! */
+			   tmpMinSendOutTime = iter_tmp->nextRTPPktSentOutTime - iter_tmp->maxAdvancedTime;
+			   iter_tmp_min = iter_tmp;
+			   initSetFlg = 1;
+		   }
+		   else
+		   {
+			   tmpSendOutTime = iter_tmp->nextRTPPktSentOutTime - iter_tmp->maxAdvancedTime;
+			   if (tmpSendOutTime < tmpMinSendOutTime)
+			   {
+				   tmpMinSendOutTime = tmpSendOutTime;
+				   iter_tmp_min = iter_tmp;
+			   }
+		   }
 
-       mutex_sessionList_p->Lock(); //<---!!
-       ++iter_tmp;  //next session
-       mutex_sessionList_p->Unlock(); //<---!!
+#if DEBUG_CALCULATE_MIN_INTERVAL
+		   i++;
+		   printf(" <session Counter [%d]>\n", i);
+		   printf(" nextRTPPktSendOutTime = %lld \n", iter_tmp->nextRTPPktSentOutTime );
+		   printf(" tmpMinSendOutTime  = %lld\n", tmpMinSendOutTime);
+#endif
+	   }
+
+	   mutex_sessionList_p->Lock(); //<---!!
+	   ++iter_tmp;  //next session
+	   mutex_sessionList_p->Unlock(); //<---!!
    }
 
    /* get current time */
@@ -371,7 +371,7 @@ int Scheduler::play_session(list<Session_T>::iterator iterator_in)
     SInt64 playOutTime = 0;    
     SInt64 theRelativePacketTime = 0;
     MP4FlibMsg_T tmp_mp4FlibMsg;    
-
+    SInt64 prevRTPTimestamp =0 ;
     bool retValBool = FALSE; //<--
 
     int retVal = 0;    
@@ -418,7 +418,7 @@ int Scheduler::play_session(list<Session_T>::iterator iterator_in)
        if (theRelativePacketTime <=  (iterator_in->maxAdvancedTime))
        {
 	   //send out this RTP packet              
-           SendOutThisRTPpacket(rtp_sockfd, iterator_in->clientIPAddr, iterator_in->clientRTPPort, iterator_in->nextRTPPkt_p, iterator_in->nextRTPPktSize);              	      
+           SendOutThisRTPpacket(rtp_sockfd, iterator_in->clientIPAddr, iterator_in->clientRTPPort, iterator_in->nextRTPPkt_p, iterator_in->nextRTPPktSize,iterator_in->SSRC,iterator_in->startPlayTime);
 
            #if SHOW_CLIENT_ADDR
 	   printf("\n~~~show client Addr~~\n");
@@ -512,7 +512,16 @@ int Scheduler::play_session(list<Session_T>::iterator iterator_in)
 	   // you need to carefully calculudate the next delivery time 
 	   // from timestamp.
            // What is the time resolution of the timestamp defined in RTP ?
-           iterator_in->nextRTPPktSentOutTime = iterator_in->previousRTPPktSentOutTime+8460;// + iterator_in->nextRTPPktTimeStamp;
+//          if(prevRTPTimestamp == 0 )prevRTPTimestamp = iterator_in->nextRTPPktTimeStamp;
+//
+//          if(prevRTPTimestamp < iterator_in->nextRTPPktTimeStamp){
+//           iterator_in->nextRTPPktSentOutTime = iterator_in->previousRTPPktSentOutTime+( iterator_in->nextRTPPktTimeStamp - prevRTPTimestamp)/90;// + iterator_in->nextRTPPktTimeStamp;
+//
+//          }else{
+//        	  iterator_in->nextRTPPktSentOutTime = iterator_in->previousRTPPktSentOutTime;
+//          }
+          iterator_in->nextRTPPktSentOutTime = iterator_in->startPlayTime + ((iterator_in->nextRTPPktTimeStamp *100/10.5)) ;
+          prevRTPTimestamp = iterator_in->nextRTPPktTimeStamp;
            printf("\nTODO: compute iterator_in->nextRTPPktSendOutTime %llu\n",iterator_in->nextRTPPktSentOutTime);
 
 
@@ -527,7 +536,7 @@ int Scheduler::play_session(list<Session_T>::iterator iterator_in)
 
 
 /* RTP server send out the this RTP packet */
-int Scheduler::SendOutThisRTPpacket(int fSocket, UInt32 inRemoteAddr, UInt16 inRemotePort, char* inBuffer, UInt32 inLength)
+int Scheduler::SendOutThisRTPpacket(int fSocket, UInt32 inRemoteAddr, UInt16 inRemotePort, char* inBuffer, UInt32 inLength,UInt32 SSRC,UInt64 startPlayTime)
 {
         int retVal = 0;
         struct sockaddr_in 	theRemoteAddr;
@@ -571,11 +580,12 @@ int Scheduler::SendOutThisRTPpacket(int fSocket, UInt32 inRemoteAddr, UInt16 inR
         					testblock[0] = testblock[0] | tmp ;
         					tmp = header->Pt;tmp = tmp <<16;//Pt
         					testblock[0] = testblock[0] | tmp ;
-        					tmp = header->SeqNum;tmp = tmp <<0;//Pt
+        					tmp = header->SeqNum+100;tmp = tmp <<0;//Pt
         					testblock[0] = testblock[0] | tmp ;
-        					tmp = header->TimeStamp;tmp = tmp <<0;//Pt
+        					tmp = header->TimeStamp+500;tmp = tmp <<0;//Pt
         					testblock[1] = testblock[1] | tmp ;
-        					tmp = header->SSRC;tmp = tmp <<0;//Pt
+        					tmp = SSRC;//header->SSRC;
+        					tmp = tmp <<0;//Pt
         					testblock[2] = testblock[2] | tmp ;
 
         					testblock[0] = ntohl(testblock[0]);
@@ -885,7 +895,9 @@ int SysMonD_w::sysMon_recv(int fd)
                    sessionObj.startPlayTime = -1;
                    sessionObj.previousRTPPktSeqNo = (UInt32)-1;
                    sessionObj.previousRTPPktSentOutTime = -1;
-
+                   int ssrc;
+                  		  ssrc = rand();
+                   sessionObj.SSRC  = ssrc;
                    /* insert the new session node into session List */
                    mutex_sessionList_p->Lock();
                    sessionList_p->insert(sessionList_p->begin(), sessionObj);
@@ -940,6 +952,7 @@ int SysMonD_w::sysMon_recv(int fd)
                  rspMsg.u.sysmonD_rtsp_setup_resp_info.session_id = iter_tmp->session_id;
                  rspMsg.u.sysmonD_rtsp_setup_resp_info.serverRTPPort = SERVER_RTP_PORT_NO;
                  rspMsg.u.sysmonD_rtsp_setup_resp_info.serverRTCPPort = SERVER_RTCP_PORT_NO;
+                 rspMsg.u.sysmonD_rtsp_setup_resp_info.SSRC = iter_tmp->SSRC;
                  printf("SysMonD_w::sysMon_recv() command type:%d\n",rspMsg.cmdType);
                  //send result back to related RTSP server
                   tmp_retVal = send(iter_tmp->rtsps_fd, &rspMsg, sizeof(SysmonDMsg_T), 0);
