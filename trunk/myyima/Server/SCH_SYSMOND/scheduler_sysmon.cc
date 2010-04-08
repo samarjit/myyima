@@ -56,12 +56,12 @@ so long as this copyright notice is reproduced with each such copy made."
 #include "../FLIB/interface.h"
 
 // you may disable some debug meesage.
-#define SCHEDULER_SYSMON_DEBUG 0
+#define SCHEDULER_SYSMON_DEBUG 1
 #define SHOW_FLIB_NPT_RANGE_GET_DEBUG 1
 #define SHOW_NEXT_PACKET_INFORMATION 1
 #define SHOW_CLIENT_ADDR 1
-#define SHOW_MIN_INTERVAL 0
-#define DEBUG_CALCULATE_MIN_INTERVAL 0
+#define SHOW_MIN_INTERVAL 1
+#define DEBUG_CALCULATE_MIN_INTERVAL 1
 #define DEBUG_SYSMOND_RTSP_PLAY_REQ 1
 #define DEEP_DEBUG 1
 
@@ -418,14 +418,15 @@ int Scheduler::play_session(list<Session_T>::iterator iterator_in)
        if (theRelativePacketTime <=  (iterator_in->maxAdvancedTime))
        {
 	   //send out this RTP packet              
-           SendOutThisRTPpacket(rtp_sockfd, iterator_in->clientIPAddr, iterator_in->clientRTPPort, iterator_in->nextRTPPkt_p, iterator_in->nextRTPPktSize,iterator_in->SSRC,iterator_in->startPlayTime);
+    	   SendOutThisRTPpacket(rtp_sockfd, iterator_in->clientIPAddr, iterator_in->clientRTPPort, iterator_in->nextRTPPkt_p, iterator_in->nextRTPPktSize,iterator_in->SSRC,iterator_in->startPlayTime);
+    	  /*
+    	   * iterator_in->nextRTPPkt_p is CORRUPT after this place do not use it
+    	   * until Flib_getNextPacket() refreshes it
+    	   */
 
-           #if SHOW_CLIENT_ADDR
+    	   #if SHOW_CLIENT_ADDR
 	   printf("\n~~~show client Addr~~\n");
            printf("clientIP=%lu, clientRTPport=%d\n",iterator_in->clientIPAddr, iterator_in->clientRTPPort);
-           struct rtp_header *nextRtpPacketPtr = NULL;
-           nextRtpPacketPtr = (struct rtp_header *)iterator_in->nextRTPPkt_p;
-           printf("My <SendOutThisRTPpacket>V=%d seqno:%d timestamp:%d ",nextRtpPacketPtr->V,nextRtpPacketPtr->SeqNum,nextRtpPacketPtr->TimeStamp);
            printf("\n~~~~~~~~~~~~~~~~~~~~~\n");
            #endif           
 
@@ -434,7 +435,7 @@ int Scheduler::play_session(list<Session_T>::iterator iterator_in)
            //if it is, then inform Flib module by sending a command to Flib's 
            //command message queue
            if (iterator_in->lastRTPPktOfBlock_Flg == TRUE)
-	   {
+	       {
               tmp_mp4FlibMsg.cmdType = FLIB_LAST_PKT_OF_BLOCK;              
 
               mutex_cmdSeqNo_p->Lock();
@@ -459,10 +460,10 @@ int Scheduler::play_session(list<Session_T>::iterator iterator_in)
           	   
            pthread_mutex_lock( &(iterator_in->curSessionState_mutex) );
            if (iterator_in->currentSessionState != PLAYING)
-	   {   //this session is not at PLAYING state, skip it
-	       pthread_mutex_unlock( &(iterator_in->curSessionState_mutex));
-	       return 0;
-	   }
+		   {   //this session is not at PLAYING state, skip it
+			   pthread_mutex_unlock( &(iterator_in->curSessionState_mutex));
+			   return 0;
+		   }
 
            pthread_mutex_lock(&FLIB_access_mutex); 
            retVal = Flib_getNextPacket(iterator_in->session_id,
@@ -473,7 +474,7 @@ int Scheduler::play_session(list<Session_T>::iterator iterator_in)
 					&(iterator_in->lastRTPPktOfBlock_Flg), 
 					&(iterator_in->blockPtr));           
            if (retVal == 0)
-	   {
+           {
                #if DEEP_DEBUG
                printf("!! Finish!!sessionID=[%llu] !!\n", iterator_in->session_id);
                #endif
@@ -520,9 +521,9 @@ int Scheduler::play_session(list<Session_T>::iterator iterator_in)
 //          }else{
 //        	  iterator_in->nextRTPPktSentOutTime = iterator_in->previousRTPPktSentOutTime;
 //          }
-          iterator_in->nextRTPPktSentOutTime = iterator_in->startPlayTime + ((iterator_in->nextRTPPktTimeStamp *100/10.5)) ;
+          iterator_in->nextRTPPktSentOutTime = iterator_in->startPlayTime + ((iterator_in->nextRTPPktTimeStamp *(double)(100.0/9.5))) ;
           prevRTPTimestamp = iterator_in->nextRTPPktTimeStamp;
-           printf("\nTODO: compute iterator_in->nextRTPPktSendOutTime %llu\n",iterator_in->nextRTPPktSentOutTime);
+           printf("\nTODO: compute iterator_in->nextRTPPktSendOutTime %llu timestamp %lu starttime: %llu\n", iterator_in->nextRTPPktSentOutTime,iterator_in->nextRTPPktTimeStamp,iterator_in->startPlayTime);
 
 
 	
@@ -557,7 +558,12 @@ int Scheduler::SendOutThisRTPpacket(int fSocket, UInt32 inRemoteAddr, UInt16 inR
 	int theErr = -1;
 
         do 
-        { struct rtp_header *	header;
+        {
+//        	 struct rtp_header *nextRtpPacketPtr = NULL;
+//        	           nextRtpPacketPtr = (struct rtp_header *)inBuffer;
+//        	           printf("My <SendOutThisRTPpacket>_1 V=%u seqno:%lu timestamp:%lu ",nextRtpPacketPtr->V,nextRtpPacketPtr->SeqNum,nextRtpPacketPtr->TimeStamp);
+
+        	struct rtp_header *	header;
          header = (rtp_header *)inBuffer;
         	unsigned int testblock[3];
         	memset(testblock,0,sizeof(unsigned int)*3);
@@ -580,9 +586,9 @@ int Scheduler::SendOutThisRTPpacket(int fSocket, UInt32 inRemoteAddr, UInt16 inR
         					testblock[0] = testblock[0] | tmp ;
         					tmp = header->Pt;tmp = tmp <<16;//Pt
         					testblock[0] = testblock[0] | tmp ;
-        					tmp = header->SeqNum+100;tmp = tmp <<0;//Pt
+        					tmp = header->SeqNum;tmp = tmp <<0;//Pt
         					testblock[0] = testblock[0] | tmp ;
-        					tmp = header->TimeStamp+500;tmp = tmp <<0;//Pt
+        					tmp = header->TimeStamp;tmp = tmp <<0;//Pt
         					testblock[1] = testblock[1] | tmp ;
         					tmp = SSRC;//header->SSRC;
         					tmp = tmp <<0;//Pt

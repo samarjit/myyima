@@ -332,7 +332,7 @@ extern "C" int getNumPackets_PackSize(	const char* movieName, const char* blockN
 		//*pkt_lens_in_a_block = m->pktsize;
 	}
 	*numpkts =  m->block_dtl_ar[BlockNum].nPackets; //just for the time being
-	printf("<getNumPackets_PackSize>BlockName%s blk_num:%d packet per blk:%d",blockName,BlockNum, m->block_dtl_ar[BlockNum].nPackets);
+	printf("<getNumPackets_PackSize>BlockName:%s;blk_num:%d; packet per blk:%d",blockName,BlockNum, m->block_dtl_ar[BlockNum].nPackets);
 
 	printf("\nTODO: incomplete at getNumPackets_PackSize()...\n");
 
