@@ -80,13 +80,22 @@ static char *localReadBlock(const char *movieName, const char *BlockName,
 	char* newBlock;
 	struct usedBlock *newUsedBlock; // pointer to hold a newly creted usedBlock structure
 	struct usedBlock *prevPtr, *curPtr; // trace the UsedBlocks' linked list
-  
-	printf("--localReadBlock---%s\n", BlockName);
-  
+	printf("\n--localReadBlock1-something fishy fter this line %s",BlockName);
+
 	// this loop is tracing the link list to find if the given blockName has been fetched.
 	curPtr = prevPtr = usedBlocks;
-  	while (curPtr) {
+
+	 if(curPtr)
+	 {
+
+		//  printf("curPtr valid but==%s?",curPtr->blockName);
+
+		 // printf("==%s ?",curPtr->blockName);
+	  }
+	while (curPtr != NULL) {
+
       		if (!strcmp(curPtr->blockName,BlockName)) {
+
 
 			//  block found in a usedBlcks list.
 
@@ -94,7 +103,7 @@ static char *localReadBlock(const char *movieName, const char *BlockName,
 					       NumOfPackets,
 					       (int *)pkt_lens_in_a_block);
 			if (*NumOfPackets != curPtr->numberOfPackets) {
-				printf("The expected number %d of packets in block %s is different from that %d of packets in used block\n", 
+				printf("The expected number %d of packets in block %s is different from that %d of packets in used block\n",
 				*NumOfPackets, BlockName, curPtr->numberOfPackets);
 				exit(0);
 			}
@@ -103,13 +112,17 @@ static char *localReadBlock(const char *movieName, const char *BlockName,
 			curPtr->counter++;
 			return curPtr->blockPtr;
 		}
-	
-		// FALL THROUGH	
+
+
+		// FALL THROUGH
 		prevPtr = curPtr;
 		curPtr = curPtr->next;
+		//if(curPtr == NULL)break;
+
+
 	}
 
-	// curPtr == NULL
+  	// curPtr == NULL
 
 	// cached block is not found.
 	// let's fetch the block from the disk and attach to the usedBlocks list.
@@ -133,14 +146,14 @@ static char *localReadBlock(const char *movieName, const char *BlockName,
 		  newBlock,
 		  NumOfPackets, 
 		  (int *)pkt_lens_in_a_block);
- 
+
 	// fill out the fields in UsedBlock structure. 
 	strncpy(newUsedBlock->blockName,BlockName,BLOCKNAMESIZE);
 	newUsedBlock->blockPtr = newBlock;
 	newUsedBlock->numberOfPackets = *NumOfPackets;
 	newUsedBlock->counter = 1; // this block is possessed by a caller.
 	newUsedBlock->next = NULL;
-  
+
  	// attach newly created UsedBlock to the end of the UsedBlocks list. 
 	if (prevPtr) {
 		prevPtr->next = newUsedBlock;
@@ -148,7 +161,7 @@ static char *localReadBlock(const char *movieName, const char *BlockName,
 	else {    
 		usedBlocks = newUsedBlock;
 	}
-
+printf("<localReadBlock> end ");
 	return newBlock;
 }
 
@@ -314,14 +327,16 @@ Boolean Flib_play(UInt64 sessionId, const char *movieName, struct NPT_RANGE_T np
  	getNextBlockName(movieName, blockName, nextBlockName);
 	if (nextBlockName[0]) { // if there exist next block fetched
 		strncpy(session->nextBlockName, nextBlockName, BLOCKNAMESIZE);
+
 		session->nextBlockPtr = localReadBlock(movieName,nextBlockName,
 						       &session->nextBlockNumOfPackets, 
 						       NULL); // we don't have to store packet lengths
 							      // of next block file at this moment.
 							      // they will be loaded later.
+
 	}
 	else {
-		printf("________No Next Block_______________________\n");
+		printf("________No Next Block_______________________ prev block:%s;\n",blockName);
 		session->nextBlockPtr = NULL;
 		session->nextBlockName[0] = 0;
 	}
@@ -402,7 +417,7 @@ int Flib_getNextPacket(	UInt64 sId,
 	*nextRtpPacketSeqNum = nextRtpPacketPtr->SeqNum;//(UInt32)htons(nextRtpPacketPtr->SeqNum);
 	*nextRtpPacketTimestamp= nextRtpPacketPtr->TimeStamp;//htonl(nextRtpPacketPtr->TimeStamp);
 	*nextPacketSize =current->pkt_lens_in_a_block[current->currentPacketIndex];
-	printf("My <Flib_getNextPacket>V=%u seqno:%lu timestamp:%lu offset %lu",nextRtpPacketPtr->V,nextRtpPacketPtr->SeqNum,nextRtpPacketPtr->TimeStamp,offset);
+	//printf("My <Flib_getNextPacket>V=%u seqno:%lu timestamp:%lu offset %lu",nextRtpPacketPtr->V,nextRtpPacketPtr->SeqNum,nextRtpPacketPtr->TimeStamp,offset);
 
 	// prepare fields that will be used in the next round.
 	if( (current->currentPacketIndex%NUMPKTS) < (current->numOfPackets-1)) {
@@ -433,7 +448,7 @@ int Flib_getNextPacket(	UInt64 sId,
 		// get ready for the next time	  
 		current->blockPtr = current->nextBlockPtr;
 		current->nextBlockPtr = NULL;
-
+		printf("My <Flib_getNextPacket Last block>Movie Name%s; next blk:%s",current->movieName,current->nextBlockName);
 		// load the number of RTP packets and their length 
 		// in a next block to read.
 		getNumPackets_PackSize(current->movieName, 

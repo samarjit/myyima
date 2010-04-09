@@ -105,7 +105,7 @@ static int InitMovies()
 	char key[BLOCKNAMESIZE];
 	char name[BLOCKNAMESIZE];
 	UInt64 size; 
-	int duration; // in seconds
+	float duration; // in seconds
 	MOVIE *Movie_Curr = NULL;
 	MOVIE *Movie_Temp = NULL;
 
@@ -122,7 +122,7 @@ static int InitMovies()
 			// for every movie item registered in the configuration file
 			if (!strcmp(key,"Movie")) {
 				// read movie information
-				if ((fscanf(cfgfile,"%s %llu %d\n",name,&size,&duration))==3) {
+				if ((fscanf(cfgfile,"%s %llu %f\n",name,&size,&duration))==3) {
 
 			
 					// it may make more sense to examine 
@@ -283,11 +283,13 @@ extern "C" int getNextBlockName(const char* movieName,
 	// if there exists next block file to read,
 	// set the block name at "nextblockName" and returns 0
 	// otherwise, set "nextblockName[0] = 0 and returns -1
-	sprintf(nextblockName,"%s_%d",movieName,CurrentBlockNumber);
+	sprintf(nextblockName,"%s%s_%d",directory,m->name,CurrentBlockNumber);
 	FILE *fp = fopen(nextblockName,"r");
 	if(fp != NULL){
 		fclose(fp);
-	}else{nextblockName[0] = 0;
+	}else{
+		printf("Block name invalid %s..",nextblockName);
+		nextblockName[0] = 0;
 	return -1;
 	}
 	printf("\nTODO: incomplete at getNextBlockName() error condition implemented\n");
@@ -304,6 +306,7 @@ extern "C" int getNumPackets_PackSize(	const char* movieName, const char* blockN
 	MOVIE *m;
         int BlockNum;
 
+
 	m = getMovieDetails(movieName);
 	if (!m) {
 		printf("getNumPackets_PackSize: Movie Not Found\n");
@@ -311,7 +314,7 @@ extern "C" int getNumPackets_PackSize(	const char* movieName, const char* blockN
 	}
   
 	BlockNum = getBlockNum(blockName);
-	//printf("getNumPackets_PackSize: getting blocks of no. %d",BlockNum);
+	printf("getNumPackets_PackSize: getting blocks of no. %d",BlockNum);
 	// TODO:
 	// If the given Block file name is incorrect,
 	// clean up the output values (numpkt and pktsize) in particular.
@@ -319,19 +322,27 @@ extern "C" int getNumPackets_PackSize(	const char* movieName, const char* blockN
 	// configure "numpkt" and "pktsize" carefully.
 	// NOTE that pktsize may be given as a NULL pointer.
 	int i;
-
+printf("This block's total packets are %d",m->block_dtl_ar[BlockNum].nPackets);
+			if(pkt_lens_in_a_block != NULL)
 			for(i=0;i< m->block_dtl_ar[BlockNum].nPackets;i++){
 				pkt_lens_in_a_block[i] =  m->block_dtl_ar[BlockNum].packet_lens_array[i];
-			//	printf("pkt_lens_in_a_block[%d]=%d",i,pkt_lens_in_a_block[i]);
+			 	 //fprintf(stderr,"pkt_lens_in_a_block[%d]=%d",i,m->block_dtl_ar[BlockNum].packet_lens_array[i]);
 			}
-	if(BlockNum  ==  m->numpkts){
+	if(BlockNum  ==  m->num_blocks){
 		//*pkt_lens_in_a_block = m->size - m->pktsize * m->numpkts;
-
+		*numpkts = m->block_dtl_ar[BlockNum].nPackets;
 		printf("getNumPackets_PackSize:End of a block reached, what to do?");
 	}else{
-		//*pkt_lens_in_a_block = m->pktsize;
+		// *pkt_lens_in_a_block = m->pktsize;
 	}
-	*numpkts =  m->block_dtl_ar[BlockNum].nPackets; //just for the time being
+
+	*numpkts = 500;// m->block_dtl_ar[BlockNum].nPackets; //just for the time being
+
+	if(BlockNum ==0 ){
+			*numpkts = 0;
+			//memset(pkt_lens_in_a_block,0,500);
+		}
+
 	printf("<getNumPackets_PackSize>BlockName:%s;blk_num:%d; packet per blk:%d",blockName,BlockNum, m->block_dtl_ar[BlockNum].nPackets);
 
 	printf("\nTODO: incomplete at getNumPackets_PackSize()...\n");
@@ -348,7 +359,7 @@ extern "C" int readBlock( const char* movieName, const char* blockName,
 {
 	struct stat stats;
 	int blockfile;
-
+	//printf("<readBlock()> start %s,%s",movieName,blockName);
 	if (getNumPackets_PackSize(movieName,blockName,numpkts,pkt_lens_in_a_block)==-1) {
 		printf("readBlock: Could not execute getNumPackets_PackSize\n");
 		return -1;
@@ -366,6 +377,6 @@ extern "C" int readBlock( const char* movieName, const char* blockName,
 		printf("readBlock: Error reading from block file %s\n", blockName);
 	}
 	close(blockfile);
-
+	//sprintf("<readBlock()> end");
 	return 0;
 }
