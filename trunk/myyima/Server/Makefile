@@ -45,7 +45,7 @@ RTSPCFLAGS = -g -w
 RTSP_SRC_DIR = ./RTSPS/
 FLIB_SRC_DIR = ./FLIB/
 SCH_SRC_DIR = ./SCH_SYSMOND/
-
+#DEBUG_FL = -ggdb
 QPTHRLIB= -lqpthr
 
 PROG= yimaserver

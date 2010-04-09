@@ -38,6 +38,7 @@ so long as this copyright notice is reproduced with each such copy made."
 #include "rtsps.h"
 #include <string.h>
 #include <stdio.h>
+#include <time.h>
 
 struct connection {
     char SID[SID_LEN];
@@ -589,6 +590,12 @@ void ConvertResponse(SysmonDMsg_T *message,char *cnvmessage,int session,char *co
 {
     char buf[MAXMESSAGESIZE];
     char temp_msg[MAXMESSAGESIZE];
+    char mytime[100];
+    time_t rawtime;
+    tm * ptm;
+	time ( &rawtime );
+	strftime(mytime, 100, "%a, %d %b %Y %H:%M:%S  GMT", gmtime(&rawtime));
+
     if (!message || !cnvmessage) return;
 
     *cnvmessage = '\0';
@@ -631,6 +638,7 @@ void ConvertResponse(SysmonDMsg_T *message,char *cnvmessage,int session,char *co
             char tmpsdpMsg[1000];
 
             tmpsdpMsg[0] = '\0';
+            strcat(cnvmessage,"Server: YimaPE\r\n");
             strcat(cnvmessage,"Cseq: ");
             sprintf(tmpsdpMsg,"%d\r\n",conntable[session].Cseq);
             strcat(cnvmessage,tmpsdpMsg);
@@ -669,10 +677,10 @@ void ConvertResponse(SysmonDMsg_T *message,char *cnvmessage,int session,char *co
             	strcat(sdpMsg,sline);
             }
             sprintf( tmpsdpMsg,"t=%f %f\r\n", message->u.sysmonD_rtsp_describe_resp_info.npt_range.startLocation,
-            		message->u.sysmonD_rtsp_describe_resp_info.npt_range.stopLocation);
+            		0/*message->u.sysmonD_rtsp_describe_resp_info.npt_range.stopLocation*/);
             strcat(sdpMsg,tmpsdpMsg);
 
-            strcat(sdpMsg,"a=controls:*\r\n");
+            strcat(sdpMsg,"a=control:*\r\n");
             if((read  =  getline(&sline,&len,fp))!=-1){
              	sline[strlen(sline)-1]=13;
              	strcat(sline,"\n");
@@ -681,7 +689,21 @@ void ConvertResponse(SysmonDMsg_T *message,char *cnvmessage,int session,char *co
             sprintf( tmpsdpMsg,"a=range:npt=0- %.5f\r\n",(float) message->u.sysmonD_rtsp_describe_resp_info.duration_in_seconds);
             conntable[session].movieDuration =  (float) message->u.sysmonD_rtsp_describe_resp_info.duration_in_seconds;
             strcat(sdpMsg,tmpsdpMsg);
-             read  =  getline(&sline,&len,fp);//skip one eol
+            read  =  getline(&sline,&len,fp);//skip one eol
+
+            //m=video 0 RTP/AVP 96
+            if((read  =  getline(&sline,&len,fp))!=-1){
+                        	sline[strlen(sline)-1]=13;
+                        	strcat(sline,"\n");
+                                  	strcat(sdpMsg,sline);
+                                  }
+            //b=AS:1365
+            if((read  =  getline(&sline,&len,fp))!=-1){
+                        	sline[strlen(sline)-1]=13;
+                        	strcat(sline,"\n");
+                                  	strcat(sdpMsg,sline);
+                                  }
+            strcat(sdpMsg,"a=3GPP-Adaptation-Support:1\r\n");
             while((read  =  getline(&sline,&len,fp))!=-1){
              	sline[strlen(sline)-1]=13;
              	strcat(sline,"\n");
@@ -690,10 +712,21 @@ void ConvertResponse(SysmonDMsg_T *message,char *cnvmessage,int session,char *co
             fclose(fp);
 
 
+			  sprintf(tmpsdpMsg,"Last-Modified: Mon, 29 Mar 2010 08:09:42 GMT\r\nCache-Control: must-revalidate\r\n");
+			  strcat(cnvmessage,tmpsdpMsg);
+
+
+
 			int sdp_len;
 			sdp_len = strlen(sdpMsg);
-			sprintf(tmpsdpMsg,"Content-length: %d\r\n\r\n",sdp_len);
+			sprintf(tmpsdpMsg,"Content-length: %d\r\n",sdp_len);
 			 strcat(cnvmessage,tmpsdpMsg);
+
+			sprintf(tmpsdpMsg,"Date: %s\r\nExpires: %s\r\n",mytime,mytime);
+			strcat(cnvmessage,tmpsdpMsg);
+			sprintf(tmpsdpMsg,"Content-Type: application/sdp\r\nx-Accept-Retransmit: our-retransmit\r\nx-Accept-Dynamic-Rate: 1\r\nContent-Base: %s\r\n\r\n",conntable[session].movie_url);
+			strcat(cnvmessage,tmpsdpMsg);
+
 			 strcat(cnvmessage,sdpMsg);
 			 strcat(cnvmessage,"\r\n");
 			printf("\nTODO: incomplete DESCRIBE RESPONSE at ConvertResponse() %s\n",sdpMsg);
@@ -718,11 +751,16 @@ void ConvertResponse(SysmonDMsg_T *message,char *cnvmessage,int session,char *co
 		  // char temp_msg[1000];
 
             temp_msg[0] = '\0';
+          strcat(cnvmessage,"Server: YimaPE\r\n");
 		  strcat(cnvmessage,"Cseq: ");
 		  sprintf(temp_msg,"%d\r\n",conntable[session].Cseq);
 		  strcat(cnvmessage,temp_msg);
 
-		  sprintf(temp_msg,"Session: %s\r\nTransport: RTP/AVP;",conntable[session].SID);
+		  sprintf(temp_msg,"Last-Modified: Mon, 29 Mar 2010 08:09:42 GMT\r\nCache-Control: must-revalidate\r\n");
+		  strcat(cnvmessage,temp_msg);
+
+
+		    sprintf(temp_msg,"Session: %s\r\nDate: %s\r\nExpires: %s\r\nTransport: RTP/AVP;",conntable[session].SID,mytime,mytime);
 		  strcat(cnvmessage,temp_msg);
 		  sprintf(temp_msg,"unicast;source=%s;",inet_ntoa(conntable[session].addr.sin_addr));
 		  strcat(cnvmessage,temp_msg);//ntohs(conntable[session].addr.sin_port)
@@ -759,8 +797,8 @@ void ConvertResponse(SysmonDMsg_T *message,char *cnvmessage,int session,char *co
 			  strcat(cnvmessage,temp_msg);
 			  sprintf( temp_msg,"Range: npt=%.5f-%.5f\r\n",(float) message->u.sysmonD_rtsp_play_resp_info.npt_range.startLocation,(float) message->u.sysmonD_rtsp_play_resp_info.npt_range.stopLocation);
 			  strcat(cnvmessage,temp_msg);
-			  sprintf(temp_msg,"RTP-Info: %s/trackID=65537;seq=%d;rtptime=%d\r\n",conntable[session].movie_url,message->u.sysmonD_rtsp_play_resp_info.nextrtp_seqqno,
-					  message->u.sysmonD_rtsp_play_resp_info.nextrtp_timestamp);
+			  sprintf(temp_msg,"RTP-Info: url=%s/trackID=65537;seq=%d;rtptime=%d\r\n\r\n",conntable[session].movie_url,message->u.sysmonD_rtsp_play_resp_info.nextrtp_seqqno,
+					 0/* message->u.sysmonD_rtsp_play_resp_info.nextrtp_timestamp*/);
 			  strcat(cnvmessage,temp_msg);
             printf("\nTODO: incomplete PLAY RESPONSE at ConvertResponse()\n");
              

@@ -59,7 +59,7 @@ typedef struct NPT_RANGE_T {
 } NPT_RANGE_T;
 
 typedef struct MOV_INFO_T {
-  int duration_in_seconds;
+  float duration_in_seconds;
   UInt64 movie_size_in_bytes;
   int timestamp_step_perPkt;
 } MOV_INFO_T;
@@ -106,7 +106,7 @@ typedef struct SYSMOND_RTSP_DESCRIBE_REQ_INFO {
 typedef struct SYSMOND_RTSP_DESCRIBE_RESP_INFO {
   UInt64 session_id;
   NPT_RANGE_T npt_range;
-  int duration_in_seconds; //added by samarjit
+  float duration_in_seconds; //added by samarjit
 } SYSMOND_RTSP_DESCRIBE_RESP_INFO;
 
 typedef struct SYSMOND_RTSP_SETUP_REQ_INFO {

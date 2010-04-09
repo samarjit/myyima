@@ -80,7 +80,7 @@ typedef struct movie {
 	unsigned long long size; //size of movie
 	int	numpkts;
 	int	pktsize; //samarjit ???
-	int	time;  //total movie time
+	float	time;  //total movie time
 
 	// TODO:
 	// add more fields for internal use

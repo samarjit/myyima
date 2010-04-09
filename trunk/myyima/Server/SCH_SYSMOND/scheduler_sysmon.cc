@@ -56,14 +56,14 @@ so long as this copyright notice is reproduced with each such copy made."
 #include "../FLIB/interface.h"
 
 // you may disable some debug meesage.
-#define SCHEDULER_SYSMON_DEBUG 1
-#define SHOW_FLIB_NPT_RANGE_GET_DEBUG 1
-#define SHOW_NEXT_PACKET_INFORMATION 1
-#define SHOW_CLIENT_ADDR 1
-#define SHOW_MIN_INTERVAL 1
-#define DEBUG_CALCULATE_MIN_INTERVAL 1
+#define SCHEDULER_SYSMON_DEBUG 0
+#define SHOW_FLIB_NPT_RANGE_GET_DEBUG 0
+#define SHOW_NEXT_PACKET_INFORMATION 0
+#define SHOW_CLIENT_ADDR 0
+#define SHOW_MIN_INTERVAL 0
+#define DEBUG_CALCULATE_MIN_INTERVAL 0
 #define DEBUG_SYSMOND_RTSP_PLAY_REQ 1
-#define DEEP_DEBUG 1
+#define DEEP_DEBUG 0
 
 __USE_QPTHR_NAMESPACE 
 
@@ -504,6 +504,7 @@ int Scheduler::play_session(list<Session_T>::iterator iterator_in)
            printf("pktSeqNo = %lu \n", iterator_in->nextRTPPktSeqNo);
            printf("pktTimeStamp = %lu \n", iterator_in->nextRTPPktTimeStamp);
            printf("pktSize = %lu \n", iterator_in->nextRTPPktSize);
+           printf("lastRTPPktOfBlock_Fl = %d \n",iterator_in->lastRTPPktOfBlock_Flg);
            printf("=========================\n");
            #endif           
            
@@ -523,7 +524,7 @@ int Scheduler::play_session(list<Session_T>::iterator iterator_in)
 //          }
           iterator_in->nextRTPPktSentOutTime = iterator_in->startPlayTime + ((iterator_in->nextRTPPktTimeStamp *(double)(100.0/9.5))) ;
           prevRTPTimestamp = iterator_in->nextRTPPktTimeStamp;
-           printf("\nTODO: compute iterator_in->nextRTPPktSendOutTime %llu timestamp %lu starttime: %llu\n", iterator_in->nextRTPPktSentOutTime,iterator_in->nextRTPPktTimeStamp,iterator_in->startPlayTime);
+          // printf("\nTODO: compute iterator_in->nextRTPPktSendOutTime %llu timestamp %lu starttime: %llu\n", iterator_in->nextRTPPktSentOutTime,iterator_in->nextRTPPktTimeStamp,iterator_in->startPlayTime);
 
 
 	
@@ -1257,7 +1258,7 @@ int SysMonD_rsp::run_sysMonD_rsp()
    MP4FlibMsg_T tmp_flib_resp;
    int tmp_retVal = 0;
    SysmonDMsg_T rspMsg;
-   int duration_in_seconds;
+   float duration_in_seconds;
    UInt64 movie_size_in_bytes;
 
 
@@ -1294,7 +1295,7 @@ int SysMonD_rsp::run_sysMonD_rsp()
              #if  SHOW_FLIB_NPT_RANGE_GET_DEBUG
 	     printf("---- SHOW_FLIB_NPT_RANGE_GET_DEBUG -<begin>--\n");
              printf("ITER movie deltaP =[%f]", iter_tmp->deltaP);
-             printf("ITER movie Duration=[%d]", iter_tmp->movInfo.duration_in_seconds);
+             printf("ITER movie Duration=[%f]", iter_tmp->movInfo.duration_in_seconds);
              printf("ITER movie Size=[%llu]", iter_tmp->movInfo.movie_size_in_bytes);
              printf("ITER movie timestamp_step_perPkt=[%d]", iter_tmp->movInfo.timestamp_step_perPkt);
              
@@ -1477,7 +1478,7 @@ void MP4Flib::FLib_main(MP4Flib_MsgQueue_T* recvMsgQ_p_in,  SysMonD_MsgQueue_T* 
 
              #if  SHOW_FLIB_NPT_RANGE_GET_DEBUG
 	     printf("---- SHOW_FLIB_NPT_RANGE_GET_DEBUG -<begin>--\n");
-             printf("movie Duration=[%d]", rspMsg.u.flib_get_npt_range_resp_info.mov_info.duration_in_seconds);
+             printf("movie Duration=[%f]", rspMsg.u.flib_get_npt_range_resp_info.mov_info.duration_in_seconds);
              printf("movie Size=[%llu]", rspMsg.u.flib_get_npt_range_resp_info.mov_info.movie_size_in_bytes);
              printf("movie timestamp_step_perPkt=[%d]", rspMsg.u.flib_get_npt_range_resp_info.mov_info.timestamp_step_perPkt);
              
