@@ -83,6 +83,7 @@ extern "C" {
 #define PLAY	40
 #define PAUSE	50
 #define TERMINATE	100
+#define HTTPOK  200
 
 #define NA	-5
 #define DEEP_DEBUG 1

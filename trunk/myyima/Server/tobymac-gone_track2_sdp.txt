@@ -1,0 +1,11 @@
+b=AS:1359
+a=x-copyright: MP4/3GP File hinted with GPAC 0.4.6-DEV (build 1 - Jun 29 2009) - compiled by Kurtnoise (C)2000-2005 - http://gpac.sourceforge.net
+
+m=video 0 RTP/AVP 96
+b=AS:1359
+a=rtpmap:96 H264/90000
+a=control:trackID=65537
+a=fmtp:96 profile-level-id=4D401E; packetization-mode=1; sprop-parameter-sets=J01AHqkYFAe2ANQYBBrbCte98BA=,KN4JyA==
+a=framesize:96 640-480
+
+
