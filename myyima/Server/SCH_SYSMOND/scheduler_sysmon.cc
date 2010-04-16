@@ -56,14 +56,14 @@ so long as this copyright notice is reproduced with each such copy made."
 #include "../FLIB/interface.h"
 
 // you may disable some debug meesage.
-#define SCHEDULER_SYSMON_DEBUG 0
-#define SHOW_FLIB_NPT_RANGE_GET_DEBUG 0
-#define SHOW_NEXT_PACKET_INFORMATION 0
-#define SHOW_CLIENT_ADDR 0
-#define SHOW_MIN_INTERVAL 0
-#define DEBUG_CALCULATE_MIN_INTERVAL 0
+#define SCHEDULER_SYSMON_DEBUG 1
+#define SHOW_FLIB_NPT_RANGE_GET_DEBUG 1
+#define SHOW_NEXT_PACKET_INFORMATION 1
+#define SHOW_CLIENT_ADDR 1
+#define SHOW_MIN_INTERVAL 1
+#define DEBUG_CALCULATE_MIN_INTERVAL 1
 #define DEBUG_SYSMOND_RTSP_PLAY_REQ 1
-#define DEEP_DEBUG 0
+#define DEEP_DEBUG 1
 
 __USE_QPTHR_NAMESPACE 
 
@@ -522,7 +522,7 @@ int Scheduler::play_session(list<Session_T>::iterator iterator_in)
 //          }else{
 //        	  iterator_in->nextRTPPktSentOutTime = iterator_in->previousRTPPktSentOutTime;
 //          }
-          iterator_in->nextRTPPktSentOutTime = iterator_in->startPlayTime + ((iterator_in->nextRTPPktTimeStamp *(double)(100.0/9.5))) ;
+          iterator_in->nextRTPPktSentOutTime = iterator_in->startPlayTime + ((iterator_in->nextRTPPktTimeStamp *(double)(100.0/9))) ;
           prevRTPTimestamp = iterator_in->nextRTPPktTimeStamp;
           // printf("\nTODO: compute iterator_in->nextRTPPktSendOutTime %llu timestamp %lu starttime: %llu\n", iterator_in->nextRTPPktSentOutTime,iterator_in->nextRTPPktTimeStamp,iterator_in->startPlayTime);
 

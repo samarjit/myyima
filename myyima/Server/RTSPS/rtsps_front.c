@@ -56,7 +56,7 @@ struct connection {
     int Cseq;
     int clientRtpPort;
     int clientRtcpPort;
-    int movieDuration;
+    float movieDuration;
     int ssrc;
 } conntable[MAXNUMCLIENTS];
 
@@ -270,12 +270,19 @@ int RunFrontend(void)
 
 					char *temp_Cseq;
 					char output[100];
+					int cmdlen2;
 					temp_Cseq = strcasestr(buf,"cseq:");
-					int cmdlen2 = strcspn(temp_Cseq, "\r\n");
-
-					 strncpy(output,temp_Cseq+5,cmdlen2-5);
+					if(temp_Cseq != NULL)
+					cmdlen2 = strcspn(temp_Cseq, "\r\n");
+					if(temp_Cseq != NULL)
+					 {strncpy(output,temp_Cseq+5,cmdlen2-5);
 					 output[cmdlen2-5]='\0';
-					 int itmpCseq = atoi(output);
+					 }else{
+						 output[0]=0;
+					 }
+					 int itmpCseq;
+					if(output != NULL)
+					  itmpCseq = atoi(output);
 					conntable[session].Cseq = itmpCseq;
 					printf("************trial Cseq:%i\n",itmpCseq);
 					state = NextState(conntable[session].state, command);
@@ -288,7 +295,10 @@ int RunFrontend(void)
 							= NextState(conntable[session].state, command))
 							!= NA,
 							"(RTSPS/frontend/client): request does not match the valid request pattern");
-
+//					if(state == HTTPOK){
+//						state = INIT;
+//						//send(conntable[session].fd, "HTTP/1.0 400 Bad Request\r\n\r\n",28,0);
+//					}//else{
 					ConvertRequest(buf, &cnvmessage, session);
 
 					memcpy((char *) buf, (char *) &cnvmessage,
@@ -303,6 +313,7 @@ int RunFrontend(void)
 #endif
 
 					conntable[session].pending = true;
+					//} //HTTPOK send directly
 				}
 			} // end else
 		} // end for inner
@@ -411,7 +422,8 @@ int NextState(int prestate,char *command)
 {
     
     switch (prestate) {
-        case INIT: 	if (!strcmp(command,"OPTIONS")) 	return INIT;
+        case INIT: if (!strcmp(command,"GET") /*|| !strcmp(command,"POST")*/) 	return HTTPOK;
+				else if (!strcmp(command,"OPTIONS")) 	return INIT;
 					else if (!strcmp(command,"DESCRIBE")) 	return START;
                     else  				return NA;
 
@@ -466,7 +478,7 @@ void ConvertRequest(char *message,SysmonDMsg_T *cnvmessage,int session)
     command[0] = '\0';
     strcpy(command,strtok(message," "));
    
-    if (!strcmp(command,"OPTIONS")) {
+    if (!strcmp(command,"OPTIONS")/* || !strcmp(command,"GET") || !strcmp(command,"POST")*/) {
     	fprintf(stdout,"<YimaJade 1.1> Options received now.\n");
     	cnvmessage->cmdType = SYSMOND_RTSP_OPTIONS_REQ;
     	cnvmessage->cmdError = SYSMOND_OK;
