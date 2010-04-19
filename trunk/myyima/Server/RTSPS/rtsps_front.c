@@ -66,9 +66,9 @@ int link_f;
 
 
 void InitiateFrontend(void);
-char *GenerateSID(char SID[]); 
+char *GenerateSID(char SID[]);
 UInt64 ConvertSID(char SID[]);
-int NextState(int prestate,char *command); 
+int NextState(int prestate,char *command);
 void ConvertRequest(char *message,SysmonDMsg_T *cnvmessage,int session);
 void ConvertResponse(SysmonDMsg_T *message,char *cnvmessage,int session,char *command);
 int FindEmptyEntry(void);
@@ -81,7 +81,7 @@ void FatalError(char *where);
 void Assert(bool condition,const char *statement);
 
 
-int RunFrontend(void) 
+int RunFrontend(void)
 {
     fd_set master;   			// master file descriptor list
     fd_set read_fds; 			// temp file descriptor list for select()
@@ -104,7 +104,7 @@ int RunFrontend(void)
 
     InitiateFrontend();
 
-    srandom(SEED);    
+    srandom(SEED);
 
 
     FD_ZERO(&master);    		// clear the master and temp sets
@@ -116,7 +116,7 @@ int RunFrontend(void)
     if (listener > link_f) {   		// keep track of the biggest file descriptor
         fdmax = listener;
         fdmin = link_f;
-    } 
+    }
     else {
         fdmax = link_f;
         fdmin = listener;
@@ -291,15 +291,34 @@ int RunFrontend(void)
 							command,state,session,conntable[session].state); /* added by Kun Fu */
 #endif
 					fflush(stdout);
+
+
 					Assert((state
 							= NextState(conntable[session].state, command))
 							!= NA,
 							"(RTSPS/frontend/client): request does not match the valid request pattern");
-//					if(state == HTTPOK){
-//						state = INIT;
-//						//send(conntable[session].fd, "HTTP/1.0 400 Bad Request\r\n\r\n",28,0);
-//					}//else{
+					if(/*state == REQ501 ||*/ state == SET_PARAM    /*HTTPOK*/){
+						state = PLAY;
+						fprintf(stdout,"\nSending SET_PARAMETER  ....2 ");
+						fflush(stdout);
+						char tempbuf[MAXMESSAGESIZE];
+						char tempbuf2[MAXMESSAGESIZE];
+						memset(tempbuf,0,MAXMESSAGESIZE);
+						strcpy(tempbuf,"RTSP/1.0 200 OK\r\n");
+						strcat(tempbuf,"Server: YimaPE\r\nCseq: ");
+
+					 	sprintf(tempbuf2,"%d\r\nSession: %s\r\n\r\n",conntable[session].Cseq,conntable[session].SID);
+
+						 strcat(tempbuf,tempbuf2);
+						fprintf(stdout,"\nSending SET_PARAMETER %s",tempbuf);
+						fflush(stdout);
+						 send(conntable[session].fd,tempbuf,strlen(tempbuf),0);
+						//send(conntable[session].fd, "HTTP/1.0 400 Bad Request\r\n\r\n",28,0);
+					}else{
+
 					ConvertRequest(buf, &cnvmessage, session);
+
+
 
 					memcpy((char *) buf, (char *) &cnvmessage,
 							sizeof(SysmonDMsg_T));
@@ -313,17 +332,20 @@ int RunFrontend(void)
 #endif
 
 					conntable[session].pending = true;
-					//} //HTTPOK send directly
+
+					}//special case //HTTPOK send directly
 				}
 			} // end else
 		} // end for inner
     } // end for outer
-}    
+}
 
 void InitiateFrontend(void)
 {
     struct sockaddr_in backend_addr;
     struct sockaddr_in my_addr;
+
+
     int i,j;
     int on;
 
@@ -333,10 +355,10 @@ void InitiateFrontend(void)
         FatalError("(RTSPS/frontend/interface)");
     }
 
-    backend_addr.sin_family = AF_INET; 
+    backend_addr.sin_family = AF_INET;
     backend_addr.sin_port = htons(LINKPORT);
     backend_addr.sin_addr.s_addr = INADDR_ANY;
-    memset(&(backend_addr.sin_zero), '\0', 8); 
+    memset(&(backend_addr.sin_zero), '\0', 8);
 
     if (connect(link_f,(struct sockaddr *)&backend_addr, sizeof(struct sockaddr)) == -1) {
         FatalError("(RTSPS/frontend/interface)");
@@ -348,18 +370,18 @@ void InitiateFrontend(void)
 
     printf("RTSP front-end socket port number (RTSPSPORT) = %d\n", RTSPSPORT);
     printf("Server-side RTP/RTCP socket port pair = %d, %d\n", SERVER_RTP_PORT_NO, SERVER_RTCP_PORT_NO);
-    
-    my_addr.sin_family = AF_INET; 
+
+    my_addr.sin_family = AF_INET;
     my_addr.sin_port = htons(RTSPSPORT);
     my_addr.sin_addr.s_addr = INADDR_ANY;
-    memset(&(my_addr.sin_zero), '\0', 8); 
+    memset(&(my_addr.sin_zero), '\0', 8);
 
     on = 1;
     if (setsockopt(listener, SOL_SOCKET, SO_REUSEADDR, &on, sizeof(on)) < 0) {
         FatalError("(RTSPS/frontend/interface)");
     }
-                       
-    if (bind(listener,(struct sockaddr *)&my_addr,sizeof(struct sockaddr)) == -1) {       
+
+    if (bind(listener,(struct sockaddr *)&my_addr,sizeof(struct sockaddr)) == -1) {
 	FatalError("(RTSPS/frontend/interface)");
     }
 
@@ -367,7 +389,9 @@ void InitiateFrontend(void)
         FatalError("(RTSPS/frontend/interface)");
     }
 
-   
+
+
+
     for (i = 0;i < MAXNUMCLIENTS;i++) {
         for (j = 0;j < SID_LEN;j++) {
             conntable[i].SID[j] = NULL;
@@ -380,7 +404,7 @@ void InitiateFrontend(void)
     }
 }
 
-char *GenerateSID(char SID[]) 
+char *GenerateSID(char SID[])
 {
     int i;
 
@@ -394,7 +418,7 @@ char *GenerateSID(char SID[])
     curTime *= 1000;		// sec -> msec
     curTime += t.tv_usec / 1000;// usec -> msec
 
-    for (i = 0;i < SID_LEN;i++) 
+    for (i = 0;i < SID_LEN;i++)
     {
       SID[i] = ((random()+curTime) % 10) + '0';
     }
@@ -409,47 +433,51 @@ UInt64 ConvertSID(char SID[])
     int i;
 
     intSID = 0;
-    temp = 1; 
+    temp = 1;
     for(i = 0; i < SID_LEN; i++){
-        intSID += temp * (UInt64)(SID[SID_LEN-1-i] - '0');        
+        intSID += temp * (UInt64)(SID[SID_LEN-1-i] - '0');
         temp = temp * 10;
     }
 
     return intSID;
 }
 
-int NextState(int prestate,char *command) 
+int NextState(int prestate,char *command)
 {
-    
+
     switch (prestate) {
-        case INIT: if (!strcmp(command,"GET") /*|| !strcmp(command,"POST")*/) 	return HTTPOK;
-				else if (!strcmp(command,"OPTIONS")) 	return INIT;
+        case INIT: 	if (!strcmp(command,"OPTIONS")) 	return INIT;
 					else if (!strcmp(command,"DESCRIBE")) 	return START;
                     else  				return NA;
 
                     break;
-        case START: if (!strcmp(command,"SETUP")) 	return READY;
+        case START: if (!strcmp(command,"SETUP") ) 	return READY;
+			else 	if (!strcmp(command,"RTSP/1.0")) 	return REQ501;
 		    else		 		return NA;
 
                     break;
         case READY: if (!strcmp(command,"PLAY"))	return PLAY;
 		    else if (!strcmp(command,"SETUP"))  return READY;
+		    else if (!strcmp(command,"SET_PARAMETER"))  return SET_PARAM;
+		    else 	if (!strcmp(command,"RTSP/1.0")) 	return REQ501;
 		    else 				return NA;
 
                     break;
         case PLAY:  if (!strcmp(command,"PLAY"))   // covers "resume"
                          return PLAY;
                     else if (!strcmp(command,"PAUSE"))    return PAUSE;
+                    else if (!strcmp(command,"SET_PARAMETER"))  return SET_PARAM;
                     else if (!strcmp(command,"TEARDOWN")) return TERMINATE;
 		    else 				  return NA;
 
                     break;
-        case PAUSE: if (!strcmp(command,"PLAY")) 	  return PLAY; 
+        case PAUSE: if (!strcmp(command,"PLAY")) 	  return PLAY;
+					else if (!strcmp(command,"SET_PARAMETER"))  return SET_PARAM;
                     else if (!strcmp(command,"TEARDOWN")) return TERMINATE;
                     else				  return NA;
 
                     break;
-        default:    
+        default:
                     fprintf(stderr,"(RTSPS/frontend): preState=%d cmd=%s\n",prestate, command);
     }
 }
@@ -477,8 +505,8 @@ void ConvertRequest(char *message,SysmonDMsg_T *cnvmessage,int session)
 
     command[0] = '\0';
     strcpy(command,strtok(message," "));
-   
-    if (!strcmp(command,"OPTIONS")/* || !strcmp(command,"GET") || !strcmp(command,"POST")*/) {
+
+    if (!strcmp(command,"OPTIONS")) {
     	fprintf(stdout,"<YimaJade 1.1> Options received now.\n");
     	cnvmessage->cmdType = SYSMOND_RTSP_OPTIONS_REQ;
     	cnvmessage->cmdError = SYSMOND_OK;
@@ -498,19 +526,20 @@ void ConvertRequest(char *message,SysmonDMsg_T *cnvmessage,int session)
 	strcpy(conntable[session].movie_url, buf); /* Be careful */
 
         temp = strrchr(buf,'/');
-        strcpy(cnvmessage->u.sysmonD_rtsp_describe_req_info.movieName,temp+1);       
+        strcpy(cnvmessage->u.sysmonD_rtsp_describe_req_info.movieName,temp+1);
 
         strcpy(conntable[session].movie_name,cnvmessage->u.sysmonD_rtsp_describe_req_info.movieName);
 
         cnvmessage->u.sysmonD_rtsp_describe_req_info.remoteaddr = conntable[session].addr;
-       
-	char *p = strtok(NULL, " "); 
+
+	char *p = strtok(NULL, " ");
 
         #if DEEP_DEBUG
         fprintf(stdout,"ConvertRequest():Describe received now.\n"); //<- added by kunfu for debugging
         #endif
 
-    } else if (!strcmp(command,"SETUP")) {
+    }
+    else if (!strcmp(command,"SETUP") || !strcmp(command,"RTSP/1.0")) {
 
         fprintf(stdout,"<YimaJade 1.1> setup received now.\n");
         cnvmessage->cmdType = SYSMOND_RTSP_SETUP_REQ;
@@ -536,6 +565,29 @@ void ConvertRequest(char *message,SysmonDMsg_T *cnvmessage,int session)
         conntable[session].clientRtpPort = atoi(temp_rtpport);
         cnvmessage->u.sysmonD_rtsp_setup_req_info.clientRTCPPort= atoi(temp_rtcpport);
         conntable[session].clientRtcpPort = atoi(temp_rtcpport);
+
+
+//		int special_case;
+//		char *retransmitptr;
+//		retransmitptr = strstr(portinfo,"x-retransmit");//x-retransmit
+//		if(retransmitptr != NULL ){
+//			special_case = 1;
+//		}
+//		if(special_case == 1){ //special case
+//			char buf[MAXMESSAGESIZE];
+//			memset(buf,0,MAXMESSAGESIZE);
+//			strcpy(buf,"OPTIONS * RTSP/1.0\r\nContent-Type: application/x-random-data\r\nContent-Length: 3\r\n\r\npqr\r\n");
+//								send(conntable[session].fd,buf,strlen(buf),0);
+//
+//								int numbytes;
+//								memset(buf,0,MAXMESSAGESIZE);
+//								numbytes = recv(conntable[session].fd, buf, MAXMESSAGESIZE, 0);
+//								if(numbytes < 0){
+//									printf("\nError receiving from client");
+//								}else{
+//									printf("\nClient answered:%s",buf);
+//								}
+//		}
         printf("\nTODO: incomplete at ConvertRequest() SETUP\n");
 
     } else if (!strcmp(command,"PLAY")) {
@@ -557,7 +609,7 @@ void ConvertRequest(char *message,SysmonDMsg_T *cnvmessage,int session)
 	// if there is no NPT value,
 	// 	create "SYSMOND_RTSP_RESUME_REQ" cmd and fill out session ID field.
  	// if existing,
-	//	create "SYSMOND_RTSP_PLAY_REQ" and fill out session ID, NPT fields.	
+	//	create "SYSMOND_RTSP_PLAY_REQ" and fill out session ID, NPT fields.
         if(strlen(output) >0){
         	 cnvmessage->cmdType = SYSMOND_RTSP_PLAY_REQ;
         	 cnvmessage->u.sysmonD_rtsp_play_req_info.npt_range.startLocation = npt;
@@ -588,7 +640,7 @@ void ConvertRequest(char *message,SysmonDMsg_T *cnvmessage,int session)
         strcpy(buf,strtok(NULL," "));
         if (!strcmp(buf,"QUIT"))
           cnvmessage->u.sysmonD_rtsp_teardown_req_info.crashFlg = 1;
-        else        
+        else
           cnvmessage->u.sysmonD_rtsp_teardown_req_info.crashFlg = 0;
     }
     else {
@@ -610,9 +662,29 @@ void ConvertResponse(SysmonDMsg_T *message,char *cnvmessage,int session,char *co
 
     if (!message || !cnvmessage) return;
 
+    ///////////local port ip
+    struct hostent* s_hostent;
+	struct sockaddr_in in_server_address;
+	int return_value;
+	char name_buffer[200];
+	return_value = gethostname(name_buffer, sizeof(name_buffer));
+
+	if (return_value == 0) { //got address
+
+		s_hostent = gethostbyname(name_buffer);
+	}
+	if (s_hostent != NULL) { //got name of server
+		for (int i = 0; s_hostent->h_addr_list[i] != 0; i++) {
+			in_server_address.sin_addr.s_addr = *s_hostent->h_addr_list[i];
+			printf("Server is running on %s...\n", inet_ntoa(
+					in_server_address.sin_addr));
+		}
+
+	}
+///////////
     *cnvmessage = '\0';
     printf("ConvertResponse command type:%d\n",message->cmdType);
-    switch (message->cmdType) { 
+    switch (message->cmdType) {
 		case SYSMOND_RTSP_OPTIONS_RESP:
                 strcpy(command,"OPTIONS");
 
@@ -661,13 +733,16 @@ void ConvertResponse(SysmonDMsg_T *message,char *cnvmessage,int session,char *co
                int theErr ;
                theErr = gettimeofday(&t, &tz);
 
+
+
+
                sprintf(tmpsdpMsg,"o=YimaServer %llu %d IN IP4 %s\r\n",message->u.sysmonD_rtsp_describe_resp_info.session_id,t.tv_sec
 						,inet_ntoa(conntable[session].addr.sin_addr));
             strcat(sdpMsg,tmpsdpMsg);
             sprintf(tmpsdpMsg,"s=/%s\r\n",conntable[session].movie_name);
             strcat(sdpMsg,tmpsdpMsg);
             strcat(sdpMsg,"u=http:///\r\n");
-            strcat(sdpMsg,"e=admin@YimaServer\r\n");
+            strcat(sdpMsg,"e=admin@\r\n");
             strcat(sdpMsg,"c=IN IP4 0.0.0.0\r\n");
             char sdpfile[200];
             strncpy(sdpfile,conntable[session].movie_name,strlen(conntable[session].movie_name)-4);
@@ -736,14 +811,14 @@ void ConvertResponse(SysmonDMsg_T *message,char *cnvmessage,int session,char *co
 
 			sprintf(tmpsdpMsg,"Date: %s\r\nExpires: %s\r\n",mytime,mytime);
 			strcat(cnvmessage,tmpsdpMsg);
-			sprintf(tmpsdpMsg,"Content-Type: application/sdp\r\nx-Accept-Retransmit: our-retransmit\r\nx-Accept-Dynamic-Rate: 1\r\nContent-Base: %s\r\n\r\n",conntable[session].movie_url);
+			sprintf(tmpsdpMsg,"Content-Type: application/sdp\r\nx-Accept-Retransmit: our-retransmit\r\nx-Accept-Dynamic-Rate: 1\r\nContent-Base: %s/\r\n\r\n",conntable[session].movie_url);
 			strcat(cnvmessage,tmpsdpMsg);
 
-			 strcat(cnvmessage,sdpMsg);
-			 strcat(cnvmessage,"\r\n");
+			strcat(cnvmessage,sdpMsg);
+		    //strcat(cnvmessage,"\r\n");
 			printf("\nTODO: incomplete DESCRIBE RESPONSE at ConvertResponse() %s\n",sdpMsg);
 
-            break;  
+            break;
 
         case SYSMOND_RTSP_SETUP_RESP:
         	printf("SYSMOND_RTSP_SETUP_RESP block in switch\n");
@@ -751,12 +826,12 @@ void ConvertResponse(SysmonDMsg_T *message,char *cnvmessage,int session,char *co
             memset(cnvmessage,'\0',2048);
             strcat(cnvmessage,"RTSP/1.0 ");
             if (message->cmdError == SYSMOND_OK) {
-                strcat(cnvmessage," 200 OK\r\n");
+                strcat(cnvmessage,"200 OK\r\n");
 	    }
             else  {
                 strcat(cnvmessage,"FAIL\r\n");
 	    }
-	    
+
 	    // TODO:
 	    // you need to append remaining characters to "cnvmessage".
 
@@ -774,34 +849,37 @@ void ConvertResponse(SysmonDMsg_T *message,char *cnvmessage,int session,char *co
 
 		    sprintf(temp_msg,"Session: %s\r\nDate: %s\r\nExpires: %s\r\nTransport: RTP/AVP;",conntable[session].SID,mytime,mytime);
 		  strcat(cnvmessage,temp_msg);
-		  sprintf(temp_msg,"unicast;source=%s;",inet_ntoa(conntable[session].addr.sin_addr));
+		  sprintf(temp_msg,"unicast;source=%s;",inet_ntoa(in_server_address.sin_addr)); //
 		  strcat(cnvmessage,temp_msg);//ntohs(conntable[session].addr.sin_port)
 		  sprintf(temp_msg,"client_port=%d-%d;", conntable[session].clientRtpPort, conntable[session].clientRtcpPort);
 		  strcat(cnvmessage,temp_msg);
 		  sprintf(temp_msg,"server_port=%d-%d;",message->u.sysmonD_rtsp_setup_resp_info.serverRTPPort,message->u.sysmonD_rtsp_setup_resp_info.serverRTCPPort);
 		  strcat(cnvmessage,temp_msg);
 
-		  sprintf(temp_msg,"ssrc=%d\r\n\r\n",message->u.sysmonD_rtsp_setup_resp_info.SSRC);
+		  sprintf(temp_msg,"ssrc=%d\r\n",message->u.sysmonD_rtsp_setup_resp_info.SSRC);
 		  strcat(cnvmessage,temp_msg);
 		  conntable[session].ssrc = message->u.sysmonD_rtsp_setup_resp_info.SSRC;
+		  //x-Retransmit: our-retransmit\r\n commented
+		  sprintf(temp_msg,"x-Transport-Options: late-tolerance=1.400000\r\nx-Retransmit: our-retransmit\r\nx-Dynamic-Rate: 1;rtt=15\r\n\r\n");
+		  strcat(cnvmessage,temp_msg);
+		  printf("\nTODO: incomplete SETUP RESPONSE at ConvertResponse()\n");
 
-	    printf("\nTODO: incomplete SETUP RESPONSE at ConvertResponse()\n");
-             
-            break;  
+            break;
         case SYSMOND_RTSP_PLAY_RESP:
-            strcpy(command,"PLAY");           
-             
+            strcpy(command,"PLAY");
+
             strcat(cnvmessage,"RTSP/1.0 ");
             if (message->cmdError == SYSMOND_OK) {
                 strcat(cnvmessage," 200 OK\r\n");
 	    }
-            else { 
+            else {
                 strcat(cnvmessage,"FAIL\r\n");
             }
 
 	    // TODO:
 	    // you need to append remaining characters to "cnvmessage".
               temp_msg[0] = '\0';
+              strcat(cnvmessage,"Server: YimaPE\r\n");
 			  strcat(cnvmessage,"Cseq: ");
 			  sprintf(temp_msg,"%d\r\n",conntable[session].Cseq);
 			  strcat(cnvmessage,temp_msg);
@@ -810,15 +888,15 @@ void ConvertResponse(SysmonDMsg_T *message,char *cnvmessage,int session,char *co
 			  sprintf( temp_msg,"Range: npt=%.5f-%.5f\r\n",(float) message->u.sysmonD_rtsp_play_resp_info.npt_range.startLocation,(float) message->u.sysmonD_rtsp_play_resp_info.npt_range.stopLocation);
 			  strcat(cnvmessage,temp_msg);
 			  sprintf(temp_msg,"RTP-Info: url=%s/trackID=65537;seq=%d;rtptime=%d\r\n\r\n",conntable[session].movie_url,message->u.sysmonD_rtsp_play_resp_info.nextrtp_seqqno,
-					 0/* message->u.sysmonD_rtsp_play_resp_info.nextrtp_timestamp*/);
+					  3750/* message->u.sysmonD_rtsp_play_resp_info.nextrtp_timestamp*/);
 			  strcat(cnvmessage,temp_msg);
             printf("\nTODO: incomplete PLAY RESPONSE at ConvertResponse()\n");
-             
-            break;  
+
+            break;
 
         case SYSMOND_RTSP_PAUSE_RESP:
-            strcpy(command,"PAUSE");           
-             
+            strcpy(command,"PAUSE");
+
             strcat(cnvmessage,"RTSP/1.0 ");
             if (message->cmdError == SYSMOND_OK) {
                 strcat(cnvmessage," 200 OK\r\n");
@@ -831,11 +909,11 @@ void ConvertResponse(SysmonDMsg_T *message,char *cnvmessage,int session,char *co
 	    // you need to append remaining characters to "cnvmessage".
 	    printf("\nTODO: incomplete PAUSE RESPONSE at ConvertResponse()\n");
 
-            break;  
+            break;
 
         case SYSMOND_RTSP_RESUME_RESP:
-            strcpy(command,"PLAY");           
-             
+            strcpy(command,"PLAY");
+
             strcat(cnvmessage,"RTSP/1.0 ");
             if (message->cmdError == SYSMOND_OK) {
                 strcat(cnvmessage,"200 OK\r\n");
@@ -848,16 +926,16 @@ void ConvertResponse(SysmonDMsg_T *message,char *cnvmessage,int session,char *co
 	    // you need to append remaining characters to "cnvmessage".
 	    printf("\nTODO: incomplete RESUME RESPONSE at ConvertResponse()\n");
 
-            break;  
+            break;
 
         case SYSMOND_RTSP_TEARDOWN_RESP:
-            strcpy(command,"TEARDOWN");           
-             
+            strcpy(command,"TEARDOWN");
+
             strcat(cnvmessage,"RTSP/1.0 ");
             if (message->cmdError == SYSMOND_OK) {
                 strcat(cnvmessage,"200 OK\r\n");
 	    }
-            else { 
+            else {
                 strcat(cnvmessage,"FAIL\r\n");
 	    }
 
@@ -871,16 +949,16 @@ void ConvertResponse(SysmonDMsg_T *message,char *cnvmessage,int session,char *co
            						  strcat(cnvmessage,temp_msg);
 	    printf("\nTODO: incomplete RESUME RESPONSE at ConvertResponse()\n");
 
-            break; 	 
+            break;
     }
 }
 
-int FindEmptyEntry(void) 
+int FindEmptyEntry(void)
 {
-    int i;   
+    int i;
 
     for (i = 0;i < MAXNUMCLIENTS;i++) {
-        if (!(conntable[i].valid)) {	  
+        if (!(conntable[i].valid)) {
           return i;
 	}
     }
@@ -891,7 +969,7 @@ int FindEmptyEntry(void)
 int FindEntry(UInt64 SID)
 {
     int i;
- 
+
     for (i = 0;i < MAXNUMCLIENTS;i++) {
         if (conntable[i].valid) {
             if (conntable[i].intSID == SID) {
@@ -899,7 +977,7 @@ int FindEntry(UInt64 SID)
 	    }
 	}
     }
-    
+
     return NA;
 }
 

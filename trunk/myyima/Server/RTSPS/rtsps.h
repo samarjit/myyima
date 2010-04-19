@@ -38,14 +38,14 @@ so long as this copyright notice is reproduced with each such copy made."
 #define RTSPS_H
 
 					// standard libraries
-#include <stdio.h>					
+#include <stdio.h>
 #include <stdlib.h>
 #include <errno.h>
 #include <string.h>
 #include <strings.h>
 					// socket related libraries
 #include <unistd.h>
-#include <sys/time.h> 
+#include <sys/time.h>
 #include <netdb.h>
 #include <sys/types.h>
 #include <netinet/in.h>
@@ -59,19 +59,19 @@ extern "C" {
 
 #include "../sysinclude/Yima_module_interfaces.h"
 
-#define WAIT4LINK	2		// amount of time (in seconds) frontend 
-  					//  waits for backend initialization 
-					//  before asking for link 
+#define WAIT4LINK	2		// amount of time (in seconds) frontend
+  					//  waits for backend initialization
+					//  before asking for link
 
 
 #define MAXNUMCLIENTS   100		// max number of clients;
 					//  hard admission control!
 
 #define BACKLOG MAXNUMCLIENTS 		// how many pending connection requests
- 					//  queue will hold 
+ 					//  queue will hold
 #define SID_LEN	19			// length of session ID in characters
 #define SEED	8734			// seed for random generator
-		
+
 #define MAXMESSAGESIZE	2048
 #define MAXFIELDLEN	40
 #define MAXCOMMANDLEN	10
@@ -84,6 +84,8 @@ extern "C" {
 #define PAUSE	50
 #define TERMINATE	100
 #define HTTPOK  200
+#define REQ501 501
+#define SET_PARAM 41
 
 #define NA	-5
 #define DEEP_DEBUG 1
